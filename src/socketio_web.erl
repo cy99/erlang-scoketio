@@ -1,20 +1,14 @@
 -module(socketio_web).
 -author('author <yongboy@gmail.com>').
 -export([start/1, stop/0, loop/2]).
--export([test/0]).
 -define(TIMEOUT, 20000).
 
 start(Options) ->
-	init(),
     {DocRoot, Options1} = get_option(docroot, Options),
     Loop = fun (Req) ->
                    ?MODULE:loop(Req, DocRoot)
            end,
     mochiweb_http:start([{max, 1000000}, {name, ?MODULE}, {loop, Loop} | Options1]).
-
-init() ->
-	ets:new(sid2g, [set]),
-	ets:new(g2sid, [set]).
 
 stop() ->
     mochiweb_http:stop(?MODULE).
@@ -35,21 +29,6 @@ loop(Req, DocRoot) ->
             Req:respond({501, [], []})
     end.
 
-test() ->
-	S = "5:1+:/chat:{}",
-	io:format("subresult : ~s~n", [string:substr(S, 3, 1)]),
-	case string:substr(S, 3, 1) of
-		":" ->
-			Target = S;
-		_ ->
-			PlusIndex = string:chr(S, $+),
-			Target = string:concat("5::", string:sub_string(S, PlusIndex + 1))
-	end,
-	io:format("target is ~p~n", [Target]).
-
-
-
-
 %% http://10.95.20.172:9000/socket.io/1/xhr-polling/c0b16716-cb45-46b5-952d-848c7dd1ea64?t=1347500902596
 %% 5:1+:/chat:{"name":"nickname","args":["firefox"]}
 do_post(["socket.io", "1", Transport, Session], Req, DocRoot) ->
@@ -61,11 +40,17 @@ do_post(["socket.io", "1", Transport, Session], Req, DocRoot) ->
 			Target = Msg;
 		_ ->
 			PlusIndex = string:chr(Msg, $+),
-			Target = string:concat("5::", string:sub_string(Msg, PlusIndex + 1))
+			Target = string:concat("5:", string:sub_string(Msg, PlusIndex + 1))
+	end,
+	Room = mapdb:get_the_room(),
+    Room ! {self(), post, Target},
+	receive
+	after 1000 ->
+		io:format("after 1000 something went wrong~n")
 	end,
 	
 	io:format("Receive data : ~p~n", [Target]),
-	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Target});
+	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], "1"});
 
 do_post([], Req, DocRoot) ->
 	Req:not_found();
@@ -76,27 +61,34 @@ do_post(Any, Req, DocRoot) ->
 do_request(["socket.io", "1"], Req, DocRoot) ->
 	Msg = io_lib:format("~s:~p:~p:~s", [uuid:gen(), 60, 60, "xhr-polling"]),
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg});
+
 do_request(["socket.io", "1", Transport, Session], Req, DocRoot) ->
-	case ets:lookup(pid2g, Session) of
-		[] ->
-			ets:insert(sid2g, {Session, Session}),
-			Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], "1++"});			
-		_ ->
-			receive
-				%%
-			after 20000 ->
-					Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], "8::"})
-			end
+	Room = mapdb:get_the_room(),
+    Room ! {self(), Session, subscribe},
+	
+	receive
+	%%	first ->
+	%%		{Type, Message} = {ok, "1::"};
+		first ->
+			Msg = "1::";
+		Message ->
+			Msg = Message,
+			io:format("receive msg ~p~n", [Msg])
+	after 20000 ->
+			Msg = "8::"
 	end,
-	%% wait for timeout now
-
-	io:format("");
-	%% Msg = io_lib:format("~s:~p:~p:~s", [uuid:gen(), 60, 60, "xhr-polling"]),
-	%% Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg});
-
-do_request(["redi"], Req, DocRoot) ->
-	Target = "http://www.baidu.com/",
-	Req:respond({302, [{"Location", Target}], "Redirecting to " ++ Target});
+	
+%% 	case Type of
+%% 		error ->
+%% 			io:format("occur error now~n"),
+%% 			Room ! {self(), Session, unsubscribe}
+%% 	end,
+	
+	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg});
+	
+%% do_request(["redi"], Req, DocRoot) ->
+%% 	Target = "http://www.baidu.com/",
+%% 	Req:respond({302, [{"Location", Target}], "Redirecting to " ++ Target});
 do_request(_, Req, DocRoot) ->
 	Req:not_found().
 
