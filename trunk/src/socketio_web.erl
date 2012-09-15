@@ -34,21 +34,22 @@ loop(Req, DocRoot) ->
 do_post(["socket.io", "1", Transport, Session], Req, DocRoot) ->
 	Data = Req:recv_body(),
 	Msg = binary_to_list(Data),
+	Room = mapdb:get_the_room(),
 	
 	case string:substr(Msg, 3, 1) of
 		":" ->
 			Target = Msg;
 		_ ->
 			PlusIndex = string:chr(Msg, $+),
+			case re:run("5:30+:[]", ":\\d+\\+", [{capture, first, list}]) of
+				{match, [Match]} ->
+					Target0 = string:concat("6::", Match, "[false]"),
+					Room ! {self(), post, Target0}
+			end,
 			Target = string:concat("5:", string:sub_string(Msg, PlusIndex + 1))
 	end,
-	Room = mapdb:get_the_room(),
-    Room ! {self(), post, Target},
-	receive
-	after 1000 ->
-		io:format("after 1000 something went wrong~n")
-	end,
 	
+    Room ! {self(), post, Target},	
 	io:format("Receive data : ~p~n", [Target]),
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], "1"});
 
