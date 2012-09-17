@@ -15,7 +15,7 @@
 %% External exports
 -export([start/0]).
 -export([new_message_queue/1, push_message/2, pop_message/1, delete_message/1]).
--export([add_session_pid/2, lookup_pid/1]).
+-export([add_session_pid/2, lookup_pid/1, delete_pid/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -39,7 +39,6 @@ delete_message(Session) ->
 
 add_session_pid(Session, Pid) ->
 	gen_server:call(?MODULE, {add_session_pid, Session, Pid}).
-
 lookup_pid(Session) ->
 	gen_server:call(?MODULE, {lookup_session_pid, Session}).
 delete_pid(Session) ->
