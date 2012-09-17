@@ -20,7 +20,8 @@ do_get({Session, Req}) ->
 	case proplists:lookup("disconnect", Data) of
 		{"disconnect", _} ->
 			%% clear the session
-			map_server:c
+			map_server:delete_message(Session),
+			map_server:delete_pid(Session),
 			Msg = "";
 		none ->
 			Msg = do_handle(Session)
