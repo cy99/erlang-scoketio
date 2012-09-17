@@ -14,7 +14,7 @@
 %% --------------------------------------------------------------------
 %% External exports
 -export([start/0]).
--export([new_message_queue/1, push_message/2, pop_message/1]).
+-export([new_message_queue/1, push_message/2, pop_message/1, delete_message/1]).
 -export([add_session_pid/2, lookup_pid/1]).
 
 %% gen_server callbacks
@@ -30,18 +30,20 @@ start() ->
 %% add new message queue in mem
 new_message_queue(Session) ->
 	gen_server:call(?MODULE, {add_queue, Session, queue:new()}).
-
 push_message(Session, Message) ->
 	gen_server:call(?MODULE, {add_message, Session, Message}).
-
 pop_message(Session) ->
 	gen_server:call(?MODULE, {pop_message, Session}).
+delete_message(Session) ->
+	gen_server:call(?MODULE, {delete_message, Session}).
 
 add_session_pid(Session, Pid) ->
 	gen_server:call(?MODULE, {add_session_pid, Session, Pid}).
 
 lookup_pid(Session) ->
 	gen_server:call(?MODULE, {lookup_session_pid, Session}).
+delete_pid(Session) ->
+	gen_server:call(?MODULE, {delete_session_pid, Session}).
 
 %% ====================================================================
 %% Server functions
@@ -80,6 +82,10 @@ handle_call({lookup_session_pid, Session}, From, State) ->
 	Reply = Pid,
     {reply, Pid, State};
 
+handle_call({delete_session_pid, Session}, From, State) ->
+	Reply = ets:delete(State#state.message, "pid_" ++ Session),
+    {reply, Reply, State};
+
 handle_call({pop_message, Session}, From, State) ->
 	{Session, Queue} = ets:lookup(State#state.message, Session),
 	case queue:out(Queue) of
@@ -89,6 +95,9 @@ handle_call({pop_message, Session}, From, State) ->
 			Reply = none
 	end,
 	
+    {reply, Reply, State};
+handle_call({delete_message, Session}, From, State) ->
+	Reply = ets:delete(State#state.message, Session),	
     {reply, Reply, State};
 handle_call({add_queue, Session, Queue}, From, State) ->
 	Reply = ets:insert(State#state.message, {Session, Queue}),
