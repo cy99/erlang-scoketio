@@ -72,8 +72,7 @@ init([]) ->
 %% --------------------------------------------------------------------
 handle_call({add_session_pid, Session, Pid}, From, State) ->
 	Key = "pid_" ++ Session,
-	Reply = ets:insert(State#state.message, {Key, Pid})
-	
+	Reply = ets:insert(State#state.message, {Key, Pid}),	
     {reply, Reply, State};
 
 handle_call({lookup_session_pid, Session}, From, State) ->
@@ -85,13 +84,16 @@ handle_call({pop_message, Session}, From, State) ->
 	{Session, Queue} = ets:lookup(State#state.message, Session),
 	case queue:out(Queue) of
 		{{value, Reply}, NewQueue} ->
-			ets:insert(State#state.message, {Session, NewQueue})
+			ets:insert(State#state.message, {Session, NewQueue});
+		{empty, _} ->
+			Reply = none
 	end,
 	
     {reply, Reply, State};
 handle_call({add_queue, Session, Queue}, From, State) ->
 	Reply = ets:insert(State#state.message, {Session, Queue}),
     {reply, Reply, State};
+
 handle_call({add_message, Session, Message}, From, State) ->
 	{Session, Queue} = ets:lookup(State#state.message, Session),
 	NewQueue = queue:in(Message, Queue),
