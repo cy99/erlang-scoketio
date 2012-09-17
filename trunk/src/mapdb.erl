@@ -11,7 +11,7 @@ room(Sessions, Pids) ->
         {From, Session, subscribe} ->
 			case lists:member(Session, Sessions) of 
 				true ->
-					io:format("has the data now~n"),
+					%% io:format("has the data now~n"),
 					NewSessions = Sessions;
 				false ->
 					From ! first,

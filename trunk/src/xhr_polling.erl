@@ -10,12 +10,12 @@
 %%
 %% Exported Functions
 %%
--export([do_get/2, do_post/2]).
+-export([do_get/1, do_post/1]).
 
 %%
 %% API Functions
 %%
-do_get(Session, Req) ->
+do_get({Session, Req}) ->
 	Data = Req:parse_qs(),
 	case proplists:lookup("disconnect", Data) of
 		{"disconnect", _} ->
@@ -32,7 +32,7 @@ do_get(Session, Req) ->
 	
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg}).
 
-do_post(Session, Req) ->
+do_post({Session, Req}) ->
 	Data = Req:recv_body(),
 	Msg = binary_to_list(Data),
 	Room = mapdb:get_the_room(),
@@ -43,7 +43,7 @@ do_post(Session, Req) ->
 		_ ->
 			case re:run(Msg, ":\\d+\\+", [{capture, first, list}]) of
 				{match, [Match]} ->
-					Target0 = string:concat("6::", Match, "[false]"),
+					Target0 = string:concat(string:concat("6::", Match), "[false]"),
 					Room ! {self(), post, Target0}
 			end,
 			PlusIndex = string:chr(Msg, $+),
@@ -51,9 +51,11 @@ do_post(Session, Req) ->
 	end,
 	
     Room ! {self(), post, Target},	
-	io:format("Receive data : ~p~n", [Target]),
-	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], "1"}).
+	io:format("$Receive data : ~p~n", [Target]),
+	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], "1"});
 
+do_post(_) ->
+	io:format("missing any thing at all now~n").
 %%
 %% Local Functions
 %%
@@ -64,8 +66,8 @@ do_handle(Session) ->
 		first ->
 			Msg = "1::";
 		Message ->
-			Msg = Message,
-			io:format("receive msg ~p~n", [Msg])
+			io:format("receive msg ~p~n", [Message]),
+			Msg = Message
 	after 20000 ->
 			Msg = "8::"
 	end.
