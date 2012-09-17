@@ -9,6 +9,8 @@ start(Options) ->
     Loop = fun (Req) ->
                    ?MODULE:loop(Req, DocRoot)
            end,
+	uuid_server:start(),
+	map_server:start(),
     mochiweb_http:start([{max, 1000000}, {name, ?MODULE}, {loop, Loop} | Options1]).
 
 stop() ->
@@ -25,7 +27,6 @@ loop(Req, DocRoot) ->
 					do_request(string:tokens(Path, "/"), Req)
 			end;
 		'POST' ->
-			io:format("post path : ~p~n", [Path]),
 			do_post(string:tokens(Path, "/"), Req);
         _ ->
             Req:respond({501, [], []})
@@ -38,7 +39,6 @@ get_transport(Transport) ->
 %% http://10.95.20.172:9000/socket.io/1/xhr-polling/c0b16716-cb45-46b5-952d-848c7dd1ea64?t=1347500902596
 %% 5:1+:/chat:{"name":"nickname","args":["firefox"]}
 do_post(["socket.io", "1", Transport, Session], Req) ->
-	io:format("post Session is ~p~n", [Session]),
 	%% NewTransport = re:replace(Transport, "-", "_"),
 	NewTransport = get_transport(Transport),
 	%% apply(NewTransport, do_post, [Session, Req]);
@@ -50,7 +50,8 @@ do_post(Any, Req) ->
 
 %% http://10.95.20.172:9000/socket.io/1/?t=1347500845159
 do_request(["socket.io", "1"], Req) ->
-	Msg = io_lib:format("~s:~p:~p:~s", [uuid:gen(), 60, 60, "xhr-polling"]),
+	Msg = io_lib:format("~s:~p:~p:~s", [uuid_server:gen(), 60, 60, "xhr-polling"]),
+	io:format("~s~n", [Msg]),
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg});
 do_request(["socket.io", "1", Transport, Session], Req) ->
 	NewTransport = get_transport(Transport),

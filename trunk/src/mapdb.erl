@@ -25,9 +25,20 @@ room(Sessions, Pids) ->
             room(Sessions, Pids -- [From]);
         {From, post, Message} ->
             From ! posted,
-            lists:foreach(fun(Pid) ->
-                    Pid ! Message
-                end, Pids),
+            %% check if the pid has been romoved form Pids
+
+
+			lists:foreach(fun(Session) ->
+                                  Pid = map_server:lookup_pid(Session),
+                                  case lists:member(Pid, Pids) of
+                                        true -> Pid ! Message;
+                                        false -> map_server:push_message(Session, Message)
+                                  end,
+								  %% map_server:push_message(Session, Message)
+						  end, Sessions),						
+%%             lists:foreach(fun(Pid) ->
+%%                     Pid ! Message
+%%                 end, Pids),
             room(Sessions, []);
         _Any ->
             room(Sessions, Pids)
