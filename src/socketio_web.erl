@@ -2,6 +2,7 @@
 -author('author <yongboy@gmail.com>').
 -export([start/1, stop/0, loop/2]).
 -define(TIMEOUT, 20000).
+-define(TRANSPORTS, [{"xhr-polling", xhr_polling}, {"jsonp-polling", jsonp_polling}]).
 
 start(Options) ->
     {DocRoot, Options1} = get_option(docroot, Options),
@@ -24,16 +25,24 @@ loop(Req, DocRoot) ->
 					do_request(string:tokens(Path, "/"), Req)
 			end;
 		'POST' ->
+			io:format("post path : ~p~n", [Path]),
 			do_post(string:tokens(Path, "/"), Req);
         _ ->
             Req:respond({501, [], []})
     end.
 
+%% 注册链接通道
+get_transport(Transport) ->
+	proplists:get_value(Transport, ?TRANSPORTS).
+
 %% http://10.95.20.172:9000/socket.io/1/xhr-polling/c0b16716-cb45-46b5-952d-848c7dd1ea64?t=1347500902596
 %% 5:1+:/chat:{"name":"nickname","args":["firefox"]}
 do_post(["socket.io", "1", Transport, Session], Req) ->
-	NewTransport = re:replace(Transport, "-", "_"),
-	NewTransport:do_post(Session, Req);
+	io:format("post Session is ~p~n", [Session]),
+	%% NewTransport = re:replace(Transport, "-", "_"),
+	NewTransport = get_transport(Transport),
+	%% apply(NewTransport, do_post, [Session, Req]);
+	NewTransport:do_post({Session, Req});
 do_post([], Req) ->
 	Req:not_found();
 do_post(Any, Req) ->
@@ -44,8 +53,8 @@ do_request(["socket.io", "1"], Req) ->
 	Msg = io_lib:format("~s:~p:~p:~s", [uuid:gen(), 60, 60, "xhr-polling"]),
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg});
 do_request(["socket.io", "1", Transport, Session], Req) ->
-	NewTransport = re:replace(Transport, "-", "_"),
-	NewTransport:do_get(Session, Req);
+	NewTransport = get_transport(Transport),
+	NewTransport:do_get({Session, Req});
 %% 	Req:respond({302, [{"Location", Target}], "Redirecting to " ++ Target});
 do_request(_, Req) ->
 	Req:not_found().
