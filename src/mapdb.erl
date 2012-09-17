@@ -12,11 +12,17 @@ room(Sessions, Pids) ->
 			case lists:member(Session, Sessions) of 
 				true ->
 					%% io:format("has the data now~n"),
-					NewSessions = Sessions;
+					NewSessions = Sessions,
+					%% check have old message
+					case map_server:pop_message(Session) of
+						Reply ->
+							From ! Reply
+					end;
 				false ->
 					From ! first,
 					io:format("now sent msg 1++~n"),
-					NewSessions = [Session | Sessions]
+					NewSessions = [Session | Sessions],
+					map_server:new_message_queue(Session)
 			end,
 			
             room(NewSessions, [From | Pids]);
@@ -33,7 +39,7 @@ room(Sessions, Pids) ->
                                   case lists:member(Pid, Pids) of
                                         true -> Pid ! Message;
                                         false -> map_server:push_message(Session, Message)
-                                  end,
+                                  end
 								  %% map_server:push_message(Session, Message)
 						  end, Sessions),						
 %%             lists:foreach(fun(Pid) ->
@@ -42,39 +48,6 @@ room(Sessions, Pids) ->
             room(Sessions, []);
         _Any ->
             room(Sessions, Pids)
-    end.
-
-room2(State, Users) ->
-    receive
-        {From, subscribe} ->
-            From ! subscribed,
-            room(State, [From | Users]);
-        {From, Session, subscribe} ->
-            From ! subscribed,
-			
-			case ets:lookup(State#state.pid2id, Session) of
-				[{_, _}] ->
-					io:format("has the data now"),
-					ok;
-				[] ->
-					ets:insert(State#state.pid2id, {Session, Session}),
-					io:format("now sent msg 1++"),
-					From ! "1++"
-			end,
-			
-            room(State, [From | Users]);
-        {From, Session, unsubscribe} ->
-            From ! unsubscribed,
-			ets:delete(State#state.pid2id, Session),
-            room(State, Users -- [From]);
-        {From, post, Message} ->
-            From ! posted,
-            lists:foreach(fun(User) ->
-                    User ! Message
-                end, Users),
-            room(State, []);
-        _Any ->
-            room(State, Users)
     end.
 
 get_the_room() ->
