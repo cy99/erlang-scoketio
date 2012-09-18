@@ -38,8 +38,12 @@ room(Sessions, Pids) ->
 			lists:foreach(fun(Session) ->
                                   Pid = map_server:lookup_pid(Session),
                                   case lists:member(Pid, Pids) of
-                                        true -> Pid ! Message;
-                                        false -> map_server:push_message(Session, Message)
+                                        true ->
+											io:format("The Pid is in pids, and send the Message ~s [Pid=~p]~n", [Message, Pid]),
+											Pid ! Message;
+                                        false ->
+											io : format("now push the message ~s~n", [Message]),
+											map_server:push_message(Session, Message)
                                   end
 						  end, Sessions),						
             room(Sessions, []);

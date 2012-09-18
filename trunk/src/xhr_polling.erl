@@ -26,35 +26,16 @@ do_get({Session, Req}) ->
 		none ->
 			Msg = do_handle(Session)
 	end,
-	
-%% 	case Type of
-%% 		error ->
-%% 			io:format("occur error now~n"),
-%% 			Room ! {self(), Session, unsubscribe}
-%% 	end,
-	
+	io:format("now ouput the response is ~s [pid=~p] ~n", [Msg, self()]),	
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg}).
 
 do_post({Session, Req}) ->
 	Data = Req:recv_body(),
 	Msg = binary_to_list(Data),
 	Room = mapdb:get_the_room(),
-	
-	case string:substr(Msg, 3, 1) of
-		":" ->
-			Target = Msg;
-		_ ->
-			case re:run(Msg, ":\\d+\\+", [{capture, first, list}]) of
-				{match, [Match]} ->
-					Target0 = string:concat(string:concat("6::", Match), "[false]"),
-					Room ! {self(), post, Target0}
-			end,
-			PlusIndex = string:chr(Msg, $+),
-			Target = string:concat("5:", string:sub_string(Msg, PlusIndex + 1))
-	end,
-	
-    Room ! {self(), post, Target},	
-	io:format("$Receive data : ~p~n", [Target]),
+	lists:foreach(fun(OneMsg) ->
+						  Room ! {self(), post, OneMsg}
+				  end, socketio_decode:decode(Msg)),
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], "1"});
 
 do_post(_) ->
