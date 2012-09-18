@@ -6,7 +6,7 @@
 <script src="js/socket.io.js"></script>
 <script>
 	// socket.io specific code
-	var socket = io.connect('http://10.95.20.184:8080');
+	var socket = io.connect('http://10.95.20.184:8080/chat');
 
 	socket.on('connect', function() {
 		$('#chat').addClass('connected');
