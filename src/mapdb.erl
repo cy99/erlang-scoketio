@@ -9,12 +9,15 @@ init([]) ->
 room(Sessions, Pids) ->
     receive
         {From, Session, subscribe} ->
-			case lists:member(Session, Sessions) of 
+			map_server:add_session_pid(Session, From),
+			case lists:member(Session, Sessions) of
 				true ->
 					%% io:format("has the data now~n"),
 					NewSessions = Sessions,
 					%% check have old message
 					case map_server:pop_message(Session) of
+						none ->
+							none;
 						Reply ->
 							From ! Reply
 					end;
@@ -22,7 +25,7 @@ room(Sessions, Pids) ->
 					From ! first,
 					io:format("now sent msg 1++~n"),
 					NewSessions = [Session | Sessions],
-					map_server:new_message_queue(Session)
+					map_server:new_message_queue(Session)			
 			end,
 			
             room(NewSessions, [From | Pids]);

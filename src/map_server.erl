@@ -77,22 +77,27 @@ handle_call({add_session_pid, Session, Pid}, From, State) ->
     {reply, Reply, State};
 
 handle_call({lookup_session_pid, Session}, From, State) ->
-	{Session, Pid} = ets:lookup(State#state.message, "pid_" ++ Session),
-	Reply = Pid,
-    {reply, Pid, State};
+	Key = "pid_" ++ Session,
+	[{Key, Reply}] = ets:lookup(State#state.message, Key),
+    {reply, Reply, State};
 
 handle_call({delete_session_pid, Session}, From, State) ->
 	Reply = ets:delete(State#state.message, "pid_" ++ Session),
     {reply, Reply, State};
 
 handle_call({pop_message, Session}, From, State) ->
-	{Session, Queue} = ets:lookup(State#state.message, Session),
-	case queue:out(Queue) of
-		{{value, Reply}, NewQueue} ->
-			ets:insert(State#state.message, {Session, NewQueue});
-		{empty, _} ->
-			Reply = none
-	end,
+	Result = ets:lookup(State#state.message, Session),
+	case Result of
+		[] ->
+			Reply = none;
+		[{Session, Queue}] ->
+			case queue:out(Queue) of
+				{{value, Reply}, NewQueue} ->
+					ets:insert(State#state.message, {Session, NewQueue});
+				_ ->
+					Reply = none
+			end
+	end,	
 	
     {reply, Reply, State};
 handle_call({delete_message, Session}, From, State) ->
@@ -103,7 +108,7 @@ handle_call({add_queue, Session, Queue}, From, State) ->
     {reply, Reply, State};
 
 handle_call({add_message, Session, Message}, From, State) ->
-	{Session, Queue} = ets:lookup(State#state.message, Session),
+	[{Session, Queue}] = ets:lookup(State#state.message, Session),
 	NewQueue = queue:in(Message, Queue),
 	Reply = ets:insert(State#state.message, {Session, NewQueue}),
     {reply, Reply, State}.
