@@ -21,7 +21,7 @@ do_get({Session, Req}) ->
 	Room = session_queue:register(Session),
 	case proplists:lookup("disconnect", Data) of
 		{"disconnect", _} ->
-			Room ! unsubscribe,
+			Room ! {self(), unsubscribe},
 			%% clear the session
 %% 			map_server:delete_message(Session),
 %% 			map_server:delete_pid(Session),
