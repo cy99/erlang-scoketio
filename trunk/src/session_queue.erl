@@ -21,7 +21,7 @@ queue(Subscribed, Messages, Defined) ->
 					From ! H,
 					NewDefined = undefined,
 					NewMessages = T,
-					NewSubscribed = Subscribed
+					NewSubscribed = true
 			end,
             queue(NewSubscribed, NewMessages, NewDefined);
         {From, unsubscribe} ->
