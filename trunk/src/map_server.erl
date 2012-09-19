@@ -78,7 +78,13 @@ handle_call({add_session_pid, Session, Pid}, From, State) ->
 
 handle_call({lookup_session_pid, Session}, From, State) ->
 	Key = "pid_" ++ Session,
-	[{Key, Reply}] = ets:lookup(State#state.message, Key),
+	Result = ets:lookup(State#state.message, Key),
+	case Result of
+		[{Key, Reply}] ->
+			Reply;
+		[] ->
+			 Reply = none
+	end,
     {reply, Reply, State};
 
 handle_call({delete_session_pid, Session}, From, State) ->

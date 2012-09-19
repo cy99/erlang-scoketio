@@ -16,15 +16,20 @@
 %% API Functions
 %%
 do_get({Session, Req}) ->
-	Data = Req:parse_qs(),
+ 	Data = Req:parse_qs(),
+	%% 	Room = mapdb:get_the_room(),
+	Room = session_queue:register(Session),
 	case proplists:lookup("disconnect", Data) of
 		{"disconnect", _} ->
+			Room ! unsubscribe,
 			%% clear the session
-			map_server:delete_message(Session),
-			map_server:delete_pid(Session),
+%% 			map_server:delete_message(Session),
+%% 			map_server:delete_pid(Session),
 			Msg = "";
 		none ->
-			Msg = do_handle(Session)
+			Room ! {self(), subscribe},
+			Msg = do_handle(Session),
+			Room ! end_connect
 	end,
 	io:format("now ouput the response is ~s [pid=~p] ~n", [Msg, self()]),	
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg}).
@@ -32,7 +37,8 @@ do_get({Session, Req}) ->
 do_post({Session, Req}) ->
 	Data = Req:recv_body(),
 	Msg = binary_to_list(Data),
-	Room = mapdb:get_the_room(),
+%% 	Room = mapdb:get_the_room(),
+	Room = session_queue:register(Session),
 	lists:foreach(fun(OneMsg) ->
 						  Room ! {self(), post, OneMsg}
 				  end, socketio_decode:decode(Msg)),
@@ -44,8 +50,6 @@ do_post(_) ->
 %% Local Functions
 %%
 do_handle(Session) ->
-	Room = mapdb:get_the_room(),
-	Room ! {self(), Session, subscribe},
 	receive
 		first ->
 			Msg = "1::";
