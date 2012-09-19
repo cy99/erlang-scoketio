@@ -26,7 +26,7 @@ do_get({Session, Req}) ->
 %% 			map_server:delete_message(Session),
 %% 			map_server:delete_pid(Session),
 			Msg = "";
-		none ->
+		_ ->
 			Room ! {self(), subscribe},
 			Msg = do_handle(Session),
 			Room ! end_connect
