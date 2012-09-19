@@ -29,7 +29,7 @@ do_get({Session, Req}) ->
 		_ ->
 			Room ! {self(), subscribe},
 			Msg = do_handle(Session),
-			Room ! end_connect
+			Room ! {self(), end_connect}
 	end,
 	io:format("now ouput the response is ~s [pid=~p] ~n", [Msg, self()]),	
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg}).
