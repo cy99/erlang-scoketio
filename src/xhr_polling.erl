@@ -40,6 +40,7 @@ do_post({Session, Req}) ->
 %% 	Room = mapdb:get_the_room(),
 	Room = session_queue:register(Session),
 	lists:foreach(fun(OneMsg) ->
+						  io:format("OneMsg is ~s~n", [OneMsg]),
 						  Room ! {self(), post, OneMsg}
 				  end, socketio_decode:decode(Msg)),
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], "1"});
