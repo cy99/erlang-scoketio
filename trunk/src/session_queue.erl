@@ -7,7 +7,8 @@ queue(Subscribed, Messages, Defined) ->
         {From, subscribe} ->
 			case Messages of
 				[] ->
-					NewDefined = defined,
+					NewDefined = From,
+					io:format("subscribe receive Pid ~p~n", [NewDefined]),
 					NewMessages = [],
 					
 					NewSubscribed = if 
@@ -18,6 +19,7 @@ queue(Subscribed, Messages, Defined) ->
 							true
 					end;
 				[H|T] -> %% 若有消息，则发送
+					io:format("from subscribe has message now ~s~n", [H]),
 					From ! H,
 					NewDefined = undefined,
 					NewMessages = T,
@@ -30,13 +32,15 @@ queue(Subscribed, Messages, Defined) ->
             queue(Subscribed, Messages, undefined);
         {From, post, Message} ->
 			case Defined of
-				defined ->
-					From ! Message,
-					NewDefined = undefined,
-					NewMessages = Messages;
 				undefined ->
+					io:format("from post message with undefined is ~s~n", [Message]),
 					NewDefined = Defined,
-					NewMessages = [Message | Messages]
+					NewMessages = [Message | Messages];
+				Pid ->
+					io:format("from post message with defined is ~s [Pid(~p)]~n", [Message, Pid]),
+					Pid ! Message,
+					NewDefined = undefined,
+					NewMessages = Messages
 			end,
             queue(Subscribed, NewMessages, NewDefined);
         _Any ->
