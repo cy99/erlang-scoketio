@@ -5,5 +5,9 @@
   {modules, []},
   {registered, []},
   {mod, {'socketio_app', []}},
-  {env, []},
+  {env, [{heartbeat_interval, 25},
+  		 {heartbeat_timeout, 60},
+         {close_timeout, 60},
+         {allow_transports, "xhr-polling"},
+         {flash_policy_server, true}]},
   {applications, [kernel, stdlib, crypto]}]}.

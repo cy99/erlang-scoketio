@@ -35,20 +35,20 @@ decode(Msg) ->
 
 message({Msg, ["1", MessageId, Endpoint, Data]}) ->
 	%% 触发初始化连接事件	
-	[Msg];
+	{["1", MessageId, Endpoint, Data], [Msg]};
 message({Msg, ["5", MessageId, Endpoint, Data]}) ->
-	%% 触发初始化连接事件	
 	case string:len(MessageId) > 0 of
 		true ->
 			Ack = "6::" ++ Endpoint ++ ":" ++ MessageId ++ "[false]",
 			NewMsg = string:join(["5", "", Endpoint, Data], ":"),
 			Messages = [Ack, NewMsg];
 		false ->
-			Messages = []
-	end;
-message({Msg, [Type, MessageId, Endpoint, Data]}) ->
-	[Msg].
+			Messages = [Msg]
+	end,
+	{["5", MessageId, Endpoint, Data], Messages};
 
+message({Msg, [Type, MessageId, Endpoint, Data]}) ->
+	{[Type, MessageId, Endpoint, Data], [Msg]}.
 %%
 %% Local Functions
 %%
