@@ -35,7 +35,7 @@ queue(Subscribed, Messages, Defined) ->
 				undefined ->
 					io:format("from post message with undefined is ~s~n", [Message]),
 					NewDefined = Defined,
-					NewMessages = [Message | Messages];
+					NewMessages = Messages ++ [Message];
 				Pid ->
 					io:format("from post message with defined is ~s [Pid(~p)]~n", [Message, Pid]),
 					Pid ! Message,

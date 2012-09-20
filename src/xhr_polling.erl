@@ -39,10 +39,36 @@ do_post({Session, Req}) ->
 	Msg = binary_to_list(Data),
 %% 	Room = mapdb:get_the_room(),
 	Room = session_queue:register(Session),
+	{[Type, MessageId, Endpoint, SubMsgData], Messages} = socketio_decode:decode(Msg),
 	lists:foreach(fun(OneMsg) ->
 						  io:format("OneMsg is ~s~n", [OneMsg]),
 						  Room ! {self(), post, OneMsg}
-				  end, socketio_decode:decode(Msg)),
+				  end, Messages),
+	
+	OriMsg = case length(Messages) > 1 of
+				 true ->
+					 lists:nth(2, Messages);
+				 false ->
+					 lists:nth(1, Messages)
+			 end,
+	
+	%% TODO 此处不是很方便，有待重构
+	Implement = endpoint_server:lookup(Endpoint),
+	case Type of
+		"5" ->
+			Implement:on_message({Session, SubMsgData, fun(SendMsg) ->
+												   %% SendMsg需要为json类型字符串 
+												   io:format("5 --> call back got message is ~s~n", [SendMsg]),
+												   Room ! {self(), post, string:join(["5", "", Endpoint, SendMsg], ":")}
+						  end});
+		"1" ->
+			Implement:on_connect({[Session, MessageId, Endpoint, SubMsgData], fun(SendMsg) ->
+												   %% SendMsg需要为json类型字符串
+												   io:format("1 --> call back got message is ~s~n", [SendMsg]),
+												   Room ! {self(), post, string:join(["5", "", Endpoint, SendMsg], ":")}
+						  end})
+	end,
+	
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], "1"});
 
 do_post(_) ->

@@ -11,6 +11,10 @@ start(Options) ->
            end,
 	uuid_server:start(),
 	map_server:start(),
+	endpoint_server:start(),
+	%% register the demo implemention
+	endpoint_server:register("/chat", chat_demo),
+	endpoint_server:register("", chat_demo),
     mochiweb_http:start([{max, 1000000}, {name, ?MODULE}, {loop, Loop} | Options1]).
 
 stop() ->
@@ -50,7 +54,7 @@ do_post(Any, Req) ->
 
 %% http://10.95.20.172:9000/socket.io/1/?t=1347500845159
 do_request(["socket.io", "1"], Req) ->
-	Msg = io_lib:format("~s:~p:~p:~s", [uuid_server:gen(), 60, 60, "xhr-polling"]),
+	Msg = io_lib:format("~s:~p:~p:~s", [uuid_server:gen(), get_env(heartbeat_timeout), get_env(close_timeout), get_env(allow_transports)]),
 	io:format("~s~n", [Msg]),
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg});
 do_request(["socket.io", "1", Transport, Session], Req) ->
@@ -63,3 +67,11 @@ do_request(_, Req) ->
 %% Internal API
 get_option(Option, Options) ->
     {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
+
+get_env(Key) ->
+	case application:get_env(Key) of
+		{ok, Value} ->
+			Value;		
+		undefined ->
+			undefined
+	end.
