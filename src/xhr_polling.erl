@@ -66,7 +66,7 @@ do_post({Session, Req}) ->
 	Implement = endpoint_server:lookup(Endpoint),
 	case Type of
 		"5" ->
-			Implement:on_message({Session, SubMsgData, fun(SendMsg) ->
+			Implement:on_message({Session, Type, MessageId, Endpoint, SubMsgData, fun(SendMsg) ->
 												   %% SendMsg需要为json类型字符串 
 												   io:format("5 --> call back got message is ~s~n", [SendMsg]),
 												   Room ! {self(), post, string:join(["5", "", Endpoint, SendMsg], ":")}
