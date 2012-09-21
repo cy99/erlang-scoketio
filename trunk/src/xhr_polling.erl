@@ -33,13 +33,12 @@ do_get({Session, Req}) ->
 			Msg = do_handle(Session),
 			Room ! {self(), end_connect}
 	end,
-	io:format("now ouput the response is ~s [pid=~p] ~n", [Msg, self()]),	
-	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg}).
+	%% io:format("now ouput the response is ~s [pid=~p] ~n", [Msg, self()]),	
+	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], gen_output(Msg)}).
 
 do_post({Session, Req}) ->
 	Data = Req:recv_body(),
 	Msg = binary_to_list(Data),
-%% 	Room = mapdb:get_the_room(),
 	Room = session_queue:register(Session),
 	{[Type, MessageId, Endpoint, SubMsgData], Messages} = socketio_decode:decode(Msg),
 	lists:foreach(fun(OneMsg) ->
@@ -47,7 +46,7 @@ do_post({Session, Req}) ->
 							  {"5", true} ->
 								 Room ! {self(), post, lists:nth(1, Messages)};
 							  {"1", _} ->
-								 io:format("OneMsg is ~s~n", [OneMsg]),
+								 %% io:format("OneMsg is ~s~n", [OneMsg]),
 								 Room ! {self(), post, OneMsg};
 							  {_, _} ->
 								  ok						  
@@ -68,13 +67,13 @@ do_post({Session, Req}) ->
 		"5" ->
 			Implement:on_message({Session, Type, MessageId, Endpoint, SubMsgData, fun(SendMsg) ->
 												   %% SendMsg需要为json类型字符串 
-												   io:format("5 --> call back got message is ~s~n", [SendMsg]),
+												   %% io:format("5 --> call back got message is ~s~n", [SendMsg]),
 												   Room ! {self(), post, string:join(["5", "", Endpoint, SendMsg], ":")}
 						  end});
 		"1" ->
 			Implement:on_connect({[Session, MessageId, Endpoint, SubMsgData], fun(SendMsg) ->
 												   %% SendMsg需要为json类型字符串
-												   io:format("1 --> call back got message is ~s~n", [SendMsg]),
+												   %% io:format("1 --> call back got message is ~s~n", [SendMsg]),
 												   Room ! {self(), post, string:join(["5", "", Endpoint, SendMsg], ":")}
 						  end});
 		"0" ->
@@ -90,12 +89,15 @@ do_post(_) ->
 %%
 %% Local Functions
 %%
+gen_output(String) ->
+	[DescList] = io_lib:format("~ts", [String]),
+    Bin = erlang:iolist_to_binary(DescList).
 do_handle(Session) ->
 	receive
 		first ->
 			Msg = "1::";
 		Message ->
-			io:format("receive msg ~p~n", [Message]),
+			%% io:format("receive msg ~p~n", [Message]),
 			Msg = Message
 	after 20000 ->
 			Msg = "8::"
