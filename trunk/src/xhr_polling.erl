@@ -17,23 +17,18 @@
 %%
 do_get({Session, Req}) ->
  	Data = Req:parse_qs(),
-	%% 	Room = mapdb:get_the_room(),
 	Room = session_queue:register(Session),
 	case proplists:lookup("disconnect", Data) of
 		{"disconnect", _} ->
-%% 			Implement = endpoint_server:lookup(Endpoint),
 			Room ! {self(), unsubscribe},
 			map_server:delete_pid(Session),
 			%% clear the session
-%% 			map_server:delete_message(Session),
-%% 			map_server:delete_pid(Session),
 			Msg = "";
 		_ ->
 			Room ! {self(), subscribe},
 			Msg = do_handle(Session),
 			Room ! {self(), end_connect}
 	end,
-	%% io:format("now ouput the response is ~s [pid=~p] ~n", [Msg, self()]),	
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], gen_output(Msg)}).
 
 do_post({Session, Req}) ->
@@ -46,7 +41,6 @@ do_post({Session, Req}) ->
 							  {"5", true} ->
 								 Room ! {self(), post, lists:nth(1, Messages)};
 							  {"1", _} ->
-								 %% io:format("OneMsg is ~s~n", [OneMsg]),
 								 Room ! {self(), post, OneMsg};
 							  {_, _} ->
 								  ok						  
@@ -55,7 +49,6 @@ do_post({Session, Req}) ->
 	
 	OriMsg = case length(Messages) > 1 of
 				 true ->
-%% 					 Room ! {self(), post, lists:nth(1, Messages)},
 					 lists:nth(2, Messages);
 				 false ->
 					 lists:nth(1, Messages)
@@ -65,16 +58,20 @@ do_post({Session, Req}) ->
 	Implement = endpoint_server:lookup(Endpoint),
 	case Type of
 		"5" ->
-			Implement:on_message({Session, Type, MessageId, Endpoint, SubMsgData, fun(SendMsg) ->
-												   %% SendMsg需要为json类型字符串 
-												   %% io:format("5 --> call back got message is ~s~n", [SendMsg]),
-												   Room ! {self(), post, string:join(["5", "", Endpoint, SendMsg], ":")}
+			Implement:on_message({Session, Type, MessageId, Endpoint, SubMsgData, fun(SendMsg, Pid) ->
+																						  TargetPid = if
+																								  is_pid(Pid) -> Pid;
+																								  true -> Room
+																							  end,
+												   TargetPid ! {self(), post, string:join(["5", "", Endpoint, SendMsg], ":")}
 						  end});
 		"1" ->
-			Implement:on_connect({[Session, MessageId, Endpoint, SubMsgData], fun(SendMsg) ->
-												   %% SendMsg需要为json类型字符串
-												   %% io:format("1 --> call back got message is ~s~n", [SendMsg]),
-												   Room ! {self(), post, string:join(["5", "", Endpoint, SendMsg], ":")}
+			Implement:on_connect({[Session, MessageId, Endpoint, SubMsgData], fun(SendMsg, Pid) ->
+																					  TargetPid = if
+																									  is_pid(Pid) -> Pid;
+																									  true -> Room
+																								  end,
+												   TargetPid ! {self(), post, string:join(["5", "", Endpoint, SendMsg], ":")}
 						  end});
 		"0" ->
 			Implement:on_disconnect({Session, Endpoint, SubMsgData}),
@@ -97,7 +94,6 @@ do_handle(Session) ->
 		first ->
 			Msg = "1::";
 		Message ->
-			%% io:format("receive msg ~p~n", [Message]),
 			Msg = Message
 	after 20000 ->
 			Msg = "8::"

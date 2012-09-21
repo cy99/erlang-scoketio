@@ -8,8 +8,7 @@ on_connect({[Session, MessageId, Endpoint, OriMessage], SendFn}) ->
 on_disconnect({Session, Endpoint, SubMsgData}) ->
 	io:format("the session(~s) with Endpoint(~s) is disconnected now ~n", [Session, Endpoint]),
 	NickMap = register_spawn(),
-	NickMap !{self(), delete, Session},
-	ok.
+	NickMap !{self(), delete, Session}.
 	
 nickname_spawn(NickMap) ->
 	receive
@@ -19,8 +18,7 @@ nickname_spawn(NickMap) ->
 		{From, tabName} ->
 			From ! NickMap,
 			nickname_spawn(NickMap);
-		{From, void} ->
-			void;
+		{From, void} ->	void;
 		{From, delete, Session} ->
 			From !ets:delete(NickMap, Session),
 			nickname_spawn(NickMap);
@@ -42,8 +40,7 @@ nickname_spawn(NickMap) ->
 			FormatNicknameStr = case string:len(NickNameStr) > 0 of
 				true ->
 					string:substr(NickNameStr, 1, string:len(NickNameStr)-1);
-				false ->
-					NickNameStr
+				false -> NickNameStr
 				end,
 			Sessions = ets:foldl(fun({OneSession, _}, Arrs) ->
 					[OneSession|Arrs]
@@ -68,8 +65,7 @@ register_spawn() ->
 on_message({Session, Type, MessageId, Endpoint, Message, SendFn}) ->
 	{_,D} = mochijson2:decode(Message),
 	Key = proplists:get_value(<<"name">>, D),
-	handle_event_name(Key, D, {Session, Type, Endpoint, Message, SendFn}),
-	io:format("chat demo recevie message is ~s with session id ~s ~n", [Message, Session]).
+	handle_event_name(Key, D, {Session, Type, Endpoint, Message, SendFn}).
 
 %% TODO 全局函数
 %% on_init() ->
@@ -85,25 +81,17 @@ handle_event_name(<<"nickname">>, Json, {Session, Type, Endpoint, Message, SendF
 	NickMap = register_spawn(),
 	NickMap ! {self(), {Session, NickNameStr}},
 	Welcome = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[\"~s\"]}", ["announcement", NickNameStr ++ " connected"])),
-	SendFn(Welcome),
+	SendFn(Welcome, parent),
 	
 	NickMap ! {self(), getNicknames},
 	receive
 		{ok, FormatNicknameStr, Sessions} -> ok
 	end,
 	NicknameNotice = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[{~s}]}", ["nicknames", FormatNicknameStr])),
-	NewMessage = {self(), post, string:join(["5", "", Endpoint, NicknameNotice], ":")},
 	lists:foreach(fun(OneSession) ->
 						  OneSessionPid = session_queue:register(OneSession),
-						  OneSessionPid ! NewMessage
+						  SendFn(NicknameNotice, OneSessionPid)
 					  end, Sessions);
-
-%% 以下代码可以正常输出中文
-%% handle_event_name(<<"nickname">>, Json, {Session, Type, Endpoint, Message, SendFn}) ->
-%% 	[NicknameBinary] = proplists:get_value(<<"args">>, Json),
-%% 	NickNameStr = lists:flatten(binary_to_list(NicknameBinary)),
-%% 	SendFn(NickNameStr);
-
 handle_event_name(<<"user message">>, Json, {Session, Type, Endpoint, Message, SendFn}) ->
 	[MessageBinary] = proplists:get_value(<<"args">>, Json),
 	MsgTxtStr = lists:flatten(binary_to_list(MessageBinary)),
@@ -113,19 +101,14 @@ handle_event_name(<<"user message">>, Json, {Session, Type, Endpoint, Message, S
 		{ok, Nickname, Sessions} -> ok
 	end,
 	
-	%% 查找同一房间好友, 发送此消息
 	JsonMessage = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[\"~s\",\"~s\"]}", ["user message", Nickname, MsgTxtStr])),
-	NewMessage = {self(), post, string:join(["5", "", Endpoint, JsonMessage], ":")},
 	lists:foreach(fun(OneSession) ->
 						  case OneSession =:= Session of
 							  false ->
 								  OneSessionPid = session_queue:register(OneSession),
-								  OneSessionPid ! NewMessage;
-							  true ->
-								  true
+								  SendFn(JsonMessage, OneSessionPid);
+							  true -> true
 						  end
 						  end, Sessions);
-%% 	SendFn(NewMessage);
 handle_event_name(<<_>>, Json, {Session, Type, Endpoint, Message, SendFn}) ->
-	io : format("got user message is ~s~n", [Message]),
-	SendFn(Message).
+	SendFn(Message, parent).
