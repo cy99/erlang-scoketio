@@ -35,43 +35,44 @@ do_post({Session, Req}) ->
 	Data = Req:recv_body(),
 	Msg = binary_to_list(Data),
 	Room = session_queue:register(Session),
-	{[Type, MessageId, Endpoint, SubMsgData], Messages} = socketio_decode:decode(Msg),
-	lists:foreach(fun(OneMsg) ->
-						  case {Type, string:len(MessageId) > 0} of
-							  {"5", true} ->
-								 Room ! {self(), post, lists:nth(1, Messages)};
-							  {"1", _} ->
-								 Room ! {self(), post, OneMsg};
-							  {_, _} ->
-								  ok						  
-						  end
-						  end, Messages),
+	{[Type, MessageId, Endpoint, SubMsgData]} = socketio_decode:decode(Msg),
 	
-	OriMsg = case length(Messages) > 1 of
-				 true ->
-					 lists:nth(2, Messages);
-				 false ->
-					 lists:nth(1, Messages)
-			 end,
+%% 	lists:foreach(fun(OneMsg) ->
+%% 						  case {Type, string:len(MessageId) > 0} of
+%%  							  {"5", true} ->
+%%  								 Room ! {self(), post, lists:nth(1, Messages)};
+%% 							  {"1", _} ->
+%% 								 Room ! {self(), post, OneMsg};
+%% 							  _ ->
+%% 								  ok						  
+%% 						  end
+%% 						  end, Messages),
+%% 	OriMsg = case length(Messages) > 1 of
+%% 				 true ->
+%% 					 lists:nth(2, Messages);
+%% 				 false ->
+%% 					 lists:nth(1, Messages)
+%% 			 end,
 	
 	%% TODO 此处不是很方便，有待重构
 	Implement = endpoint_server:lookup(Endpoint),
 	case Type of
 		"5" ->
-			Implement:on_message({Session, Type, MessageId, Endpoint, SubMsgData, fun(SendMsg, Pid) ->
+			Implement:on_message({Session, Type, MessageId, Endpoint, SubMsgData, fun(SendMsg, Pid, Type) ->
 																						  TargetPid = if
 																								  is_pid(Pid) -> Pid;
 																								  true -> Room
 																							  end,
-												   TargetPid ! {self(), post, string:join(["5", "", Endpoint, SendMsg], ":")}
+												   TargetPid ! {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")}
 						  end});
 		"1" ->
-			Implement:on_connect({[Session, MessageId, Endpoint, SubMsgData], fun(SendMsg, Pid) ->
+			Room ! {self(), post, Msg},
+			Implement:on_connect({[Session, MessageId, Endpoint, SubMsgData], fun(SendMsg, Pid, Type) ->
 																					  TargetPid = if
 																									  is_pid(Pid) -> Pid;
 																									  true -> Room
 																								  end,
-												   TargetPid ! {self(), post, string:join(["5", "", Endpoint, SendMsg], ":")}
+												   TargetPid ! {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")}
 						  end});
 		"0" ->
 			Implement:on_disconnect({Session, Endpoint, SubMsgData}),

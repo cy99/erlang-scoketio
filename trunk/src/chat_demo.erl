@@ -32,7 +32,6 @@ nickname_spawn(NickMap) ->
 		{From, getNicknames} ->
 			NicknameList = ets:foldl(fun({_, Value}, Arrs) ->
 											 RealValue = binary_to_list(Value),
-%% 											 [ | Arrs] end, Arrs = [], NickMap),
 											 Str = lists:flatten(io_lib:format("\"~s\":\"~s\",", [RealValue, RealValue])),
 											 Arrs ++ [Str] end, Arrs = [], NickMap),
 
@@ -63,6 +62,12 @@ register_spawn() ->
 	end.
 
 on_message({Session, Type, MessageId, Endpoint, Message, SendFn}) ->
+	case string:len(MessageId) > 0  of
+		true ->
+			Ack = MessageId ++ "[false]",
+			 SendFn(Ack, parent, "6");
+		false -> ok			
+	end,
 	{_,D} = mochijson2:decode(Message),
 	Key = proplists:get_value(<<"name">>, D),
 	handle_event_name(Key, D, {Session, Type, Endpoint, Message, SendFn}).
@@ -81,7 +86,7 @@ handle_event_name(<<"nickname">>, Json, {Session, Type, Endpoint, Message, SendF
 	NickMap = register_spawn(),
 	NickMap ! {self(), {Session, NickNameStr}},
 	Welcome = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[\"~s\"]}", ["announcement", NickNameStr ++ " connected"])),
-	SendFn(Welcome, parent),
+	SendFn(Welcome, parent, Type),
 	
 	NickMap ! {self(), getNicknames},
 	receive
@@ -90,7 +95,7 @@ handle_event_name(<<"nickname">>, Json, {Session, Type, Endpoint, Message, SendF
 	NicknameNotice = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[{~s}]}", ["nicknames", FormatNicknameStr])),
 	lists:foreach(fun(OneSession) ->
 						  OneSessionPid = session_queue:register(OneSession),
-						  SendFn(NicknameNotice, OneSessionPid)
+						  SendFn(NicknameNotice, OneSessionPid, Type)
 					  end, Sessions);
 handle_event_name(<<"user message">>, Json, {Session, Type, Endpoint, Message, SendFn}) ->
 	[MessageBinary] = proplists:get_value(<<"args">>, Json),
@@ -106,9 +111,9 @@ handle_event_name(<<"user message">>, Json, {Session, Type, Endpoint, Message, S
 						  case OneSession =:= Session of
 							  false ->
 								  OneSessionPid = session_queue:register(OneSession),
-								  SendFn(JsonMessage, OneSessionPid);
+								  SendFn(JsonMessage, OneSessionPid, Type);
 							  true -> true
 						  end
 						  end, Sessions);
 handle_event_name(<<_>>, Json, {Session, Type, Endpoint, Message, SendFn}) ->
-	SendFn(Message, parent).
+	SendFn(Message, parent, Type).
