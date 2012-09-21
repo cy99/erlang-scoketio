@@ -14,7 +14,7 @@ on_disconnect({Session, Endpoint, SubMsgData}) ->
 nickname_spawn(NickMap) ->
 	receive
 		{From, {Key, Value}} ->
-			From ! ets:insert(NickMap, {Key, Value}),
+			From ! ets:insert(NickMap, {Key, list_to_binary(Value)}),
 			nickname_spawn(NickMap);
 		{From, tabName} ->
 			From ! NickMap,
@@ -29,11 +29,13 @@ nickname_spawn(NickMap) ->
 			Sessions = ets:foldl(fun({OneSession, _}, Arrs) ->
 					[OneSession|Arrs]
 				end, Arrs = [], NickMap),
-			From ! {ok, Value, Sessions},
+			From ! {ok, binary_to_list(Value), Sessions},
 			nickname_spawn(NickMap);
 		{From, getNicknames} ->
 			NicknameList = ets:foldl(fun({_, Value}, Arrs) ->
-											 Str = io_lib:format("~p:~p,", [Value, Value]),
+											 RealValue = binary_to_list(Value),
+%% 											 [ | Arrs] end, Arrs = [], NickMap),
+											 Str = lists:flatten(io_lib:format("\"~s\":\"~s\",", [RealValue, RealValue])),
 											 Arrs ++ [Str] end, Arrs = [], NickMap),
 
 			NickNameStr = lists:flatten(NicknameList),
@@ -81,7 +83,7 @@ handle_event_name(<<"nickname">>, Json, {Session, Type, Endpoint, Message, SendF
 	NickNameStr = lists:flatten(binary_to_list(NicknameBinary)),
 	
 	NickMap = register_spawn(),
-	NickMap !{self(), {Session, NickNameStr}},
+	NickMap ! {self(), {Session, NickNameStr}},
 	Welcome = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[\"~s\"]}", ["announcement", NickNameStr ++ " connected"])),
 	SendFn(Welcome),
 	
@@ -95,8 +97,13 @@ handle_event_name(<<"nickname">>, Json, {Session, Type, Endpoint, Message, SendF
 						  OneSessionPid = session_queue:register(OneSession),
 						  OneSessionPid ! NewMessage
 					  end, Sessions);
-	
-%% 	SendFn(NicknameNotice);
+
+%% 以下代码可以正常输出中文
+%% handle_event_name(<<"nickname">>, Json, {Session, Type, Endpoint, Message, SendFn}) ->
+%% 	[NicknameBinary] = proplists:get_value(<<"args">>, Json),
+%% 	NickNameStr = lists:flatten(binary_to_list(NicknameBinary)),
+%% 	SendFn(NickNameStr);
+
 handle_event_name(<<"user message">>, Json, {Session, Type, Endpoint, Message, SendFn}) ->
 	[MessageBinary] = proplists:get_value(<<"args">>, Json),
 	MsgTxtStr = lists:flatten(binary_to_list(MessageBinary)),
@@ -107,8 +114,7 @@ handle_event_name(<<"user message">>, Json, {Session, Type, Endpoint, Message, S
 	end,
 	
 	%% 查找同一房间好友, 发送此消息
-
-	JsonMessage = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[~p,~p]}", ["user message", Nickname, MsgTxtStr])),
+	JsonMessage = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[\"~s\",\"~s\"]}", ["user message", Nickname, MsgTxtStr])),
 	NewMessage = {self(), post, string:join(["5", "", Endpoint, JsonMessage], ":")},
 	lists:foreach(fun(OneSession) ->
 						  case OneSession =:= Session of
