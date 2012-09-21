@@ -36,31 +36,23 @@ loop(Req, DocRoot) ->
             Req:respond({501, [], []})
     end.
 
-%% 注册链接通道
 get_transport(Transport) ->
 	proplists:get_value(Transport, ?TRANSPORTS).
 
-%% http://10.95.20.172:9000/socket.io/1/xhr-polling/c0b16716-cb45-46b5-952d-848c7dd1ea64?t=1347500902596
-%% 5:1+:/chat:{"name":"nickname","args":["firefox"]}
 do_post(["socket.io", "1", Transport, Session], Req) ->
-	%% NewTransport = re:replace(Transport, "-", "_"),
 	NewTransport = get_transport(Transport),
-	%% apply(NewTransport, do_post, [Session, Req]);
 	NewTransport:do_post({Session, Req});
 do_post([], Req) ->
 	Req:not_found();
 do_post(Any, Req) ->
 	Req:respond({501, [], []}).
 
-%% http://10.95.20.172:9000/socket.io/1/?t=1347500845159
 do_request(["socket.io", "1"], Req) ->
 	Msg = io_lib:format("~s:~p:~p:~s", [uuid_server:gen(), get_env(heartbeat_timeout), get_env(close_timeout), get_env(allow_transports)]),
-	io:format("~s~n", [Msg]),
 	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg});
 do_request(["socket.io", "1", Transport, Session], Req) ->
 	NewTransport = get_transport(Transport),
 	NewTransport:do_get({Session, Req});
-%% 	Req:respond({302, [{"Location", Target}], "Redirecting to " ++ Target});
 do_request(_, Req) ->
 	Req:not_found().
 
