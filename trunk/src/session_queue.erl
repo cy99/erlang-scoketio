@@ -2,7 +2,7 @@
 
 -export([register/1]).
 
-queue(Subscribed, Messages, Defined) ->
+queue(Subscribed, Messages, Defined, TimeRef, Endpoint) ->
     receive
         {From, subscribe} ->
 			case Messages of
@@ -11,7 +11,7 @@ queue(Subscribed, Messages, Defined) ->
 					%% io:format("subscribe receive Pid ~p~n", [NewDefined]),
 					NewMessages = [],
 					
-					NewSubscribed = if 
+					NewSubscribed = if
 						Subscribed == false ->
 							From ! first,
 							true;
@@ -25,11 +25,33 @@ queue(Subscribed, Messages, Defined) ->
 					NewMessages = T,
 					NewSubscribed = true
 			end,
-            queue(NewSubscribed, NewMessages, NewDefined);
-        {From, unsubscribe} ->
+            queue(NewSubscribed, NewMessages, NewDefined, TimeRef, Endpoint);
+        {From, Session, unsubscribe} ->
+        	map_server:delete_pid(Session),
+			case TimeRef of
+				undefined -> ok;
+				_ -> timer:cancel(TimeRef)
+			end,
             void;
+        {From, unsubscribe} ->
+			case TimeRef of
+				undefined -> ok;
+				_ -> timer:cancel(TimeRef)
+			end,
+            void;
+        {From, timeout, NewTimeRef} ->
+            case TimeRef of
+				undefined -> ok;
+				_ -> timer:cancel(TimeRef)
+			end,
+			queue(Subscribed, Messages, Defined, NewTimeRef, Endpoint);
         {From, end_connect} ->
-            queue(Subscribed, Messages, undefined);
+            queue(Subscribed, Messages, undefined, TimeRef, Endpoint);
+		{From, endpoint, NewEndpoint} ->
+            queue(Subscribed, Messages, undefined, TimeRef, NewEndpoint);
+		{From, getEndpoint} ->
+			From ! Endpoint,
+            queue(Subscribed, Messages, undefined, TimeRef, Endpoint);		
         {From, post, Message} ->
 			case Defined of
 				undefined ->
@@ -42,9 +64,9 @@ queue(Subscribed, Messages, Defined) ->
 					NewDefined = undefined,
 					NewMessages = Messages
 			end,
-            queue(Subscribed, NewMessages, NewDefined);
+            queue(Subscribed, NewMessages, NewDefined, TimeRef, Endpoint);
         _Any ->
-            queue(Subscribed, Messages, Defined)
+            queue(Subscribed, Messages, Defined, TimeRef, Endpoint)
     end.
 
 register(Session) ->
@@ -53,7 +75,7 @@ register(Session) ->
             %% io:format("create the room with spawn now ~n"),
             NewPid = spawn(fun() ->
                 %% queue(init([]), [])
-                queue(false, [], undefined)
+                queue(false, [], undefined, undefined, undefined)
             end),
 			map_server:add_session_pid(Session, NewPid),
             NewPid;
