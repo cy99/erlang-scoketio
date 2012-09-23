@@ -1,6 +1,7 @@
 -module(socketio_web).
 -author('author <yongboy@gmail.com>').
 -export([start/1, stop/0, loop/2]).
+-export([get_env/1]).
 -define(TIMEOUT, 20000).
 -define(TRANSPORTS, [{"xhr-polling", xhr_polling}, {"jsonp-polling", jsonp_polling}]).
 
@@ -11,10 +12,10 @@ start(Options) ->
            end,
 	uuid_server:start(),
 	map_server:start(),
-	endpoint_server:start(),
+
 	%% register the demo implemention
-	endpoint_server:register("/chat", chat_demo),
-	endpoint_server:register("", chat_demo),
+	map_server:register("/chat", chat_demo),
+
     mochiweb_http:start([{max, 1000000}, {name, ?MODULE}, {loop, Loop} | Options1]).
 
 stop() ->
