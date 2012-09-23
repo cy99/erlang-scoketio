@@ -11,19 +11,17 @@ on_disconnect({Session, Endpoint, SubMsgData}, SendFn) ->
 	receive
 		{ok, Nickname, _} -> ok
 	end,
+	NickMap ! {self(), delete, Session},
 	
 	NickMap ! {self(), getNicknames},
 	receive
-		{ok, FormatNicknameStr, Sessions} -> ok
+		{ok, FormatNicknameStr, LeftSessions} -> ok
 	end,
 	Type = "5",
 	Announcement = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[\"~s\"]}", ["announcement", Nickname ++ " disconnected"])),
 	NicknameNotice = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[{~s}]}", ["nicknames", FormatNicknameStr])),
-	
-	LeftSessions = lists:delete(Session, Sessions),
-	SendFn(Announcement, {Sessions, Type}),
-	SendFn(NicknameNotice, {Sessions, Type}),
-	NickMap !{self(), delete, Session}.
+	SendFn(Announcement, {LeftSessions, Type}),
+	SendFn(NicknameNotice, {LeftSessions, Type}).
 
 on_message({Session, Type, MessageId, Endpoint, Message}, SendFn) ->
 	case string:len(MessageId) > 0  of
