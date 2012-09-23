@@ -1,81 +1,75 @@
 -module(session_queue).
-
 -export([register/1]).
+-record(state, {subscribed = false, messages = [], defined, timeRef, endpoint}).
 
-queue(Subscribed, Messages, Defined, TimeRef, Endpoint) ->
+queue(State) ->
     receive
         {From, subscribe} ->
-			case Messages of
+			case State#state.messages of
 				[] ->
 					NewDefined = From,
-					%% io:format("subscribe receive Pid ~p~n", [NewDefined]),
 					NewMessages = [],
 					
 					NewSubscribed = if
-						Subscribed == false ->
+						State#state.subscribed == false ->
 							From ! first,
 							true;
 						true ->
 							true
 					end;
 				[H|T] -> %% 若有消息，则发送
-					%% io:format("from subscribe has message now ~s~n", [H]),
 					From ! H,
 					NewDefined = undefined,
 					NewMessages = T,
 					NewSubscribed = true
 			end,
-            queue(NewSubscribed, NewMessages, NewDefined, TimeRef, Endpoint);
+            queue(State#state{subscribed = NewSubscribed, messages = NewMessages, defined = NewDefined});
         {From, Session, unsubscribe} ->
         	map_server:delete_pid(Session),
-			case TimeRef of
+			case State#state.timeRef of
 				undefined -> ok;
-				_ -> timer:cancel(TimeRef)
+				_ -> timer:cancel(State#state.timeRef)
 			end,
             void;
         {From, unsubscribe} ->
-			case TimeRef of
+			case State#state.timeRef of
 				undefined -> ok;
-				_ -> timer:cancel(TimeRef)
+				_ -> timer:cancel(State#state.timeRef)
 			end,
             void;
         {From, timeout, NewTimeRef} ->
-            case TimeRef of
+            case State#state.timeRef of
 				undefined -> ok;
-				_ -> timer:cancel(TimeRef)
+				_ -> timer:cancel(State#state.timeRef)
 			end,
-			queue(Subscribed, Messages, Defined, NewTimeRef, Endpoint);
+			queue(State#state{timeRef = NewTimeRef});
         {From, end_connect} ->
-            queue(Subscribed, Messages, undefined, TimeRef, Endpoint);
+            queue(State#state{defined=undefined});
 		{From, endpoint, NewEndpoint} ->
-            queue(Subscribed, Messages, undefined, TimeRef, NewEndpoint);
+			queue(State#state{endpoint=NewEndpoint});
 		{From, getEndpoint} ->
-			From ! Endpoint,
-            queue(Subscribed, Messages, undefined, TimeRef, Endpoint);		
+			From ! State#state.endpoint,
+            queue(State#state{});
         {From, post, Message} ->
-			case Defined of
+			case State#state.defined of
 				undefined ->
-					%% io:format("from post message with undefined is ~s~n", [Message]),
-					NewDefined = Defined,
-					NewMessages = Messages ++ [Message];
+					NewDefined = State#state.defined,
+					NewMessages = lists:merge([Message], State#state.messages);
 				Pid ->
-					%% io:format("from post message with defined is ~s [Pid(~p)]~n", [Message, Pid]),
 					Pid ! Message,
 					NewDefined = undefined,
-					NewMessages = Messages
+					NewMessages = State#state.messages
 			end,
-            queue(Subscribed, NewMessages, NewDefined, TimeRef, Endpoint);
+            queue(State#state{messages = NewMessages, defined = NewDefined});
         _Any ->
-            queue(Subscribed, Messages, Defined, TimeRef, Endpoint)
+            queue(State#state{})
     end.
 
 register(Session) ->
     case map_server:lookup_pid(Session) of
         none ->
-            %% io:format("create the room with spawn now ~n"),
             NewPid = spawn(fun() ->
-                %% queue(init([]), [])
-                queue(false, [], undefined, undefined, undefined)
+                queue(#state{})
             end),
 			map_server:add_session_pid(Session, NewPid),
             NewPid;
