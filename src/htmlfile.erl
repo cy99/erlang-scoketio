@@ -31,8 +31,6 @@ wait_data(Response) ->
 			"1::";			  
 		Message ->
 			Message
-    after ?HEARBEAT_INTERVAL ->
-		"2::"
     end,
 	
     Response:write_chunk(gen_output(Msg)),
@@ -88,7 +86,8 @@ do_post_msg({Session,Msg}) ->
 				send_call({Session, Type, Endpoint}, SendMsg, Others)
 			end);
 		"2" ->
-			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT);
+			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
+			timer:send_after(?HEARBEAT_INTERVAL, "2::");		
 		"0" ->
 			Implement:on_disconnect({Session, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
 				send_call({Session, Type, Endpoint}, SendMsg, Others)
