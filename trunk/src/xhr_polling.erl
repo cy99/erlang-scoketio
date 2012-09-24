@@ -16,7 +16,7 @@ do_get_msg({Session, Data}) ->
 			set_timeout(Room, Session,1),
 			Msg = "";
 		_ ->
-			set_timeout(Room,Session, ?HEARBEAT_TIMEOUT),
+			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
 			Room ! {self(), subscribe},
 			Msg = receive
 					first ->
