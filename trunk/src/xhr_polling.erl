@@ -1,6 +1,6 @@
 -module(xhr_polling).
--compile(export_all).
-%% -export([do_get/1, do_post/1, timeout_call/1]).
+%% -compile(export_all).
+-export([do_get/1, do_post/1, timeout_call/1, set_timeout/3, do_get_msg/1, do_post_msg/1]).
 -define(HEARBEAT_INTERVAL, socketio_web:get_env(heartbeat_interval)*1000).
 -define(HEARBEAT_TIMEOUT, socketio_web:get_env(heartbeat_timeout)*1000).
 
@@ -16,8 +16,8 @@ do_get_msg({Session, Data}) ->
 			set_timeout(Room, Session,1),
 			Msg = "";
 		_ ->
-			Room ! {self(), subscribe, ?MODULE},
 			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
+			Room ! {self(), subscribe, ?MODULE},
 			Msg = receive
 					first ->
 						"1::";
