@@ -1,7 +1,7 @@
 -module(htmlfile).
 -extends(xhr_polling).
--compile(export_all).
-%% -export([do_get/1, do_post/1, timeout_call/1]).
+%% -compile(export_all).
+-export([do_get/1, do_post/1, timeout_call/1]).
 -define(HEARBEAT_TIMEOUT, socketio_web:get_env(heartbeat_timeout)*1000).
 
 do_get({Session, Req}) ->
@@ -22,6 +22,12 @@ do_get({Session, Req}) ->
 			wait_data(Session, Room, Response),
 			Room ! {self(), end_connect}
 	end.
+
+do_post(Any) ->
+	?BASE_MODULE:do_post(Any).
+
+timeout_call(Any) ->
+	?BASE_MODULE:time_call(Any).
 
 wait_data(Session, Room, Response) ->
     Msg = receive
