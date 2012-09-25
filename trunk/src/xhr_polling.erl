@@ -16,8 +16,8 @@ do_get_msg({Session, Data}) ->
 			set_timeout(Room, Session,1),
 			Msg = "";
 		_ ->
+			Room ! {self(), subscribe, ?MODULE},
 			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
-			Room ! {self(), subscribe},
 			Msg = receive
 					first ->
 						"1::";
@@ -36,7 +36,7 @@ timeout_call({Session, Endpoint, Type}) ->
 	Implement:on_disconnect({Session, Endpoint, timeout}, fun(SendMsg, Others) ->
 				send_call({Session, Type, Endpoint}, SendMsg, Others)
 	end),
-	Room ! {self(), Session, unsubscribe}.
+	Room ! {self(), unsubscribe, Session}.
 
 set_timeout(Room, Session, Timeout) ->
 	Room ! {self(),getEndpoint},
@@ -65,21 +65,24 @@ do_post_msg({Session,Msg}) ->
 	%% TODO 此处不是很方便，有待重构
 	Implement = map_server:lookup(Endpoint),
 	case Type of
-		"5" ->
-			Implement:on_message({Session, Type, MessageId, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
+		"0" ->
+			Implement:on_disconnect({Session, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
 				send_call({Session, Type, Endpoint}, SendMsg, Others)
-			end);
+			end),
+			Room ! {self(), unsubscribe, Session};
 		"1" ->
 			Room ! {self(), endpoint, Endpoint},
 			Room ! {self(), post, Msg},
 			Implement:on_connect({Session, MessageId, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
 				send_call({Session, Type, Endpoint}, SendMsg, Others)
 			end);
-		"0" ->
-			Implement:on_disconnect({Session, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
+		"2" ->
+			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
+			timer:send_after(?HEARBEAT_INTERVAL, Room, {self(), post, "2::"});
+		"5" ->
+			Implement:on_message({Session, Type, MessageId, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
 				send_call({Session, Type, Endpoint}, SendMsg, Others)
-			end),
-			Room ! {self(), Session, unsubscribe}
+			end)
 	end.
 
 do_post({Session, Req}) ->
