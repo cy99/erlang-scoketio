@@ -3,7 +3,7 @@
 -export([start/1, stop/0, loop/2]).
 -export([get_env/1]).
 -define(TIMEOUT, 20000).
--define(TRANSPORTS, [{"xhr-polling", xhr_polling}, {"jsonp-polling", jsonp_polling}]).
+-define(TRANSPORTS, [{"xhr-polling", xhr_polling}, {"jsonp-polling", jsonp_polling}, {"htmlfile", htmlfile}]).
 
 start(Options) ->
     {DocRoot, Options1} = get_option(docroot, Options),
