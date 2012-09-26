@@ -5,9 +5,8 @@ on_connect({Session, MessageId, Endpoint, OriMessage}, SendFn) ->
 	io:format("chat demo was called on_connect funtion with OriMsg : ~s and session id ~s ~n", [OriMessage, Session]).
 
 on_disconnect({Session, Endpoint, SubMsgData}, SendFn) ->
-	io:format("the session(~s) with Endpoint(~s) is disconnected now ~n", [Session, Endpoint]),
 	NickMap = register_spawn(),		
-	NickMap !{self(), lookup, Session},
+	NickMap ! {self(), lookup, Session},
 	receive
 		{ok, Nickname, _} -> ok
 	end,
@@ -48,7 +47,12 @@ handle_event_name(<<"nickname">>, Json, {Session, Type, Endpoint, Message, SendF
 	NickMap = register_spawn(),
 	NickMap ! {self(), {Session, NickNameStr}},
 	Welcome = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[\"~s\"]}", ["announcement", NickNameStr ++ " connected"])),
-	SendFn(Welcome, self),
+	
+	NickMap ! {self(), sessions},
+	receive
+		{ok, Sessions} -> Sessions
+	end,
+	SendFn(Welcome, {Sessions, Type}),
 	
 	NickMap ! {self(), getNicknames},
 	receive
@@ -60,7 +64,7 @@ handle_event_name(<<"user message">>, Json, {Session, Type, Endpoint, Message, S
 	[MessageBinary] = proplists:get_value(<<"args">>, Json),
 	MsgTxtStr = lists:flatten(binary_to_list(MessageBinary)),
 	NickMap = register_spawn(),
-	NickMap !{self(), lookup, Session},
+	NickMap ! {self(), lookup, Session},
 	receive
 		{ok, Nickname, Sessions} -> ok
 	end,
@@ -79,21 +83,31 @@ nickname_spawn(NickMap) ->
 		{From, tabName} ->
 			From ! NickMap,
 			nickname_spawn(NickMap);
-		{From, void} ->	void;
+		{_, void} ->	void;
 		{From, delete, Session} ->
 			From ! ets:delete(NickMap, Session),
 			nickname_spawn(NickMap);
 		{From, lookup, Session} ->
-			[{_, Value}] = ets:lookup(NickMap, Session),
+			case ets:lookup(NickMap, Session) of
+				[] ->
+					void;
+				[{_, Value}] ->
+					Sessions = ets:foldl(fun({OneSession, _}, Arrs) ->
+							[OneSession|Arrs]
+						end, [], NickMap),
+					From ! {ok, Value, Sessions}
+			end,
+			nickname_spawn(NickMap);
+		{From, sessions} ->
 			Sessions = ets:foldl(fun({OneSession, _}, Arrs) ->
 					[OneSession|Arrs]
-				end, Arrs = [], NickMap),
-			From ! {ok, Value, Sessions},
+				end, [], NickMap),
+			From ! {ok, Sessions},
 			nickname_spawn(NickMap);
 		{From, getNicknames} ->
 			NicknameList = ets:foldl(fun({_, Value}, Arrs) ->
 											 Str = lists:flatten(io_lib:format("\"~s\":\"~s\",", [Value, Value])),
-											 Arrs ++ [Str] end, Arrs = [], NickMap),
+											 Arrs ++ [Str] end, [], NickMap),
 			NickNameStr = lists:flatten(NicknameList),
 			FormatNicknameStr = case string:len(NickNameStr) > 0 of
 				true ->
@@ -102,7 +116,7 @@ nickname_spawn(NickMap) ->
 				end,
 			Sessions = ets:foldl(fun({OneSession, _}, Arrs) ->
 					[OneSession|Arrs]
-				end, Arrs = [], NickMap),
+				end, [], NickMap),
 			From ! {ok, FormatNicknameStr, Sessions},
 			nickname_spawn(NickMap)
 	end.

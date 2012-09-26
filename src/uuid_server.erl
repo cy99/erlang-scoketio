@@ -1,9 +1,6 @@
-%%% -------------------------------------------------------------------
-%%% Author  : Administrator
-%%% Description :
-%%%
-%%% Created : 2012-9-17
-%%% -------------------------------------------------------------------
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio.
 -module(uuid_server).
 
 -behaviour(gen_server).
@@ -22,9 +19,13 @@
 %% ====================================================================
 %% External functions
 %% ====================================================================
+%% @spec start() -> void
+%% @doc start the uuid server
 start() ->
 	gen_server:start({local, ?MODULE}, ?MODULE, [], []).
 
+%% @spec gen() -> UUID
+%% @doc generate one uuid
 gen() ->
 	gen_server:call(?MODULE, {gen}).
 %% ====================================================================

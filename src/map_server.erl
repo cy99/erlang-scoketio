@@ -1,9 +1,6 @@
-%%% -------------------------------------------------------------------
-%%% Author  : Administrator
-%%% Description :
-%%%
-%%% Created : 2012-9-17
-%%% -------------------------------------------------------------------
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio.
 -module(map_server).
 
 -behaviour(gen_server).
@@ -29,18 +26,33 @@ start() ->
 	gen_server:start({local, ?MODULE}, ?MODULE, [], []).
 
 %% endpoint
+%% @spec register(Endpoint, Implement) -> Boolean
+%% @doc register endpoint with its implemention, when client call the endpoint, the server will execute the relation implement
 register(Endpoint, Implement) ->
 	gen_server:call(?MODULE, {register, Endpoint, Implement}).
+%% @spec unregister(Endpoint) -> true
+%% @doc delete the endpoint with its implemention
 unregister(Endpoint) ->
 	gen_server:call(?MODULE, {unregister, Endpoint}).
+
+%% @spec lookup(Endpoint) -> Endpoint | none
+%% @doc look up the endpoint's implemention, if found not, return none
 lookup(Endpoint) ->
 	gen_server:call(?MODULE, {lookup, Endpoint}).
 
 %% session
+%% @spec add_session_pid(Session, Pid) -> true
+%% @doc insert into the truple {Session, Pid}
 add_session_pid(Session, Pid) ->
 	gen_server:call(?MODULE, {add_session_pid, Session, Pid}).
+
+%% @spec lookup_pid(Session) -> Pid | undefined
+%% @spec look up the Pid by Session
 lookup_pid(Session) ->
 	gen_server:call(?MODULE, {lookup_session_pid, Session}).
+
+%% @spec delete_pid(Session) -> true
+%% @doc delete truple {Session, Pid} by Session
 delete_pid(Session) ->
 	gen_server:call(?MODULE, {delete_session_pid, Session}).
 

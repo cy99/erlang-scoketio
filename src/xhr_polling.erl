@@ -1,14 +1,24 @@
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio.
+
 -module(xhr_polling).
-%% -compile(export_all).
 -export([do_get/1, do_post/1, timeout_call/1, set_timeout/2, set_timeout/3, do_get_msg/1, do_post_msg/1]).
 -define(HEARBEAT_INTERVAL, socketio_web:get_env(heartbeat_interval)*1000).
 -define(HEARBEAT_TIMEOUT, socketio_web:get_env(heartbeat_timeout)*1000).
 
+%%
+%% API Functions
+%%
+%% @spec do_get({Session, Req}) -> void
+%% @doc server for do get method
 do_get({Session, Req}) ->
  	Data = Req:parse_qs(),
 	Msg = do_get_msg({Session, Data}),
 	Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], gen_output(Msg)}).
 
+%% @spec do_get_msg({Session, Data}) -> Msg
+%% @doc just export for htmlfile/jsonp module to call
 do_get_msg({Session, Data}) ->
 	Room = session_queue:lookup(Session),
 	case Room of
@@ -18,25 +28,33 @@ do_get_msg({Session, Data}) ->
 			do_handle_get_msg({Session, Data}, Room)
 	end.
 
-do_handle_get_msg({Session, Data}, Room) ->
-	case proplists:lookup("disconnect", Data) of
-		{"disconnect", _} ->
-			set_timeout(Room, Session,1),
-			"";
+%% @spec do_post(Any) -> void
+%% @doc server for do post method
+do_post({Session, Req}) ->
+	Data = Req:recv_body(),
+	Msg = binary_to_list(Data),
+	
+	Result = do_post_msg({Session, Msg}),
+	
+	Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], Result});
+do_post(_) ->
+	io:format("missing any thing at all now~n").
+
+%% @spec do_post_msg({Session,Msg}) -> Msg
+%% @doc just export for htmlfile/jsonp module to call
+do_post_msg({Session,Msg}) ->
+	{[Type, MessageId, Endpoint, SubMsgData]} = socketio_decode:decode(Msg),
+	Room = session_queue:lookup(Session),
+	case Room of
+		undefined ->
+			"7::" ++ Endpoint ++ ":[\"Request Invalide\"]+[\"Please do not do that!\"]";
 		_ ->
-			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
-			Room ! {self(), subscribe, ?MODULE},
-			Msg = receive
-					first ->
-						"1::";
-					Message ->
-						Message
-				after ?HEARBEAT_INTERVAL ->
-						"8::"
-				end,			
-			Room ! {self(), end_connect},
-			Msg
+			do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room),
+			"1"
 	end.
+
+%% @spec timeout_call(Any) -> void
+%% @doc timeout call
 timeout_call({Room, Session}) ->
 	Room ! {self(), unsubscribe, Session};
 timeout_call({Room, Session, Endpoint, Type}) ->
@@ -47,9 +65,13 @@ timeout_call({Room, Session, Endpoint, Type}) ->
 	end),
 	Room ! {self(), unsubscribe, Session}.
 
+%% @spec set_timeout(Room, Session) -> void
+%% @doc set timer execute one time with default ?HEARBEAT_TIMEOUT
 set_timeout(Room, Session) ->
 	set_timeout(Room, Session, ?HEARBEAT_TIMEOUT).
 
+%% @spec set_timeout(Room, Session, Timeout) -> void
+%% @doc set timer execute one time
 set_timeout(Room, Session, Timeout) ->
 	Room ! {self(),getEndpoint},
 	Endpoint = receive
@@ -66,21 +88,13 @@ set_timeout(Room, Session, Timeout) ->
 		{ok, TRef} ->
 			TRef;
 		{error, Reason} ->
-				undefined
+			undefined
 	end,
 	Room ! {self(), timeout, TimeRef}.
 
-do_post_msg({Session,Msg}) ->
-	{[Type, MessageId, Endpoint, SubMsgData]} = socketio_decode:decode(Msg),
-	Room = session_queue:lookup(Session),
-	case Room of
-		undefined ->
-			"7::" ++ Endpoint ++ ":[\"Request Invalide\"]+[\"Please do not do that!\"]";
-		_ ->
-			do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room),
-			"1"
-	end.
-
+%%
+%% Local Functions
+%%
 do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room) ->
 	Implement = map_server:lookup(Endpoint),
 	case Type of
@@ -104,19 +118,26 @@ do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room)
 			end)
 	end.
 
-do_post({Session, Req}) ->
-	Data = Req:recv_body(),
-	Msg = binary_to_list(Data),
-	
-	Result = do_post_msg({Session, Msg}),
-	
-	Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], Result});
+do_handle_get_msg({Session, Data}, Room) ->
+	case proplists:lookup("disconnect", Data) of
+		{"disconnect", _} ->
+			set_timeout(Room, Session,1),
+			"";
+		_ ->
+			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
+			Room ! {self(), subscribe, ?MODULE},
+			Msg = receive
+					first ->
+						"1::";
+					Message ->
+						Message
+				after ?HEARBEAT_INTERVAL ->
+						"8::"
+				end,			
+			Room ! {self(), end_connect},
+			Msg
+	end.
 
-do_post(_) ->
-	io:format("missing any thing at all now~n").
-%%
-%% Local Functions
-%%
 send_call({Session, _, Endpoint}, SendMsg, ack) ->
 	Room = session_queue:lookup(Session),
 	Message = {self(), post, string:join(["6", "", Endpoint, SendMsg], ":")},

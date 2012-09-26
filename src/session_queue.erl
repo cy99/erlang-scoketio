@@ -1,7 +1,32 @@
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio.
+
 -module(session_queue).
 -export([register/1, lookup/1]).
 -record(state, {subscribed = false, messages = [], defined, timeRef, endpoint, transport}).
 
+%%
+%% API Functions
+%%
+register(Session) ->
+    case lookup(Session) of
+        undefined ->
+            NewPid = spawn(fun() ->
+                queue(#state{})
+            end),
+			map_server:add_session_pid(Session, NewPid),
+            NewPid;
+        Pid ->
+            Pid
+    end.
+
+lookup(Session) ->
+    map_server:lookup_pid(Session).
+
+%%
+%% Local Functions
+%%
 queue(State) ->
     receive
         {From, subscribe, Transport} ->
@@ -78,18 +103,3 @@ handle_post_msg({_, Message}, State, _) ->
 			NewMessages = State#state.messages
 	end,
 	{NewMessages, NewDefined}.
-
-register(Session) ->
-    case lookup(Session) of
-        undefined ->
-            NewPid = spawn(fun() ->
-                queue(#state{})
-            end),
-			map_server:add_session_pid(Session, NewPid),
-            NewPid;
-        Pid ->
-            Pid
-    end.
-
-lookup(Session) ->
-    map_server:lookup_pid(Session).

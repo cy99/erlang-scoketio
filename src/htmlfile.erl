@@ -1,9 +1,18 @@
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio.
+
 -module(htmlfile).
 -extends(xhr_polling).
-%% -compile(export_all).
 -export([do_get/1, do_post/1, timeout_call/1]).
 -define(HEARBEAT_INTERVAL, socketio_web:get_env(heartbeat_interval)*1000).
 
+%%
+%% API Functions
+%%
+
+%% @spec do_get({Session, Req}) -> void
+%% @doc server for do get method
 do_get({Session, Req}) ->
 	Room = session_queue:lookup(Session),
 	case Room of
@@ -16,6 +25,19 @@ do_get({Session, Req}) ->
 			do_handle_get_msg({Session, Req}, Room)
 	end.
 
+%% @spec do_post(Any) -> void
+%% @doc server for do post method, call xhr_polling::do_post(Any)
+do_post(Any) ->
+	?BASE_MODULE:do_post(Any).
+
+%% @spec timeout_call(Any) -> void
+%% @doc call xhr_polling::timeout_call(Any)
+timeout_call(Any) ->
+	?BASE_MODULE:time_call(Any).
+
+%%
+%% Local Functions
+%%
 do_handle_get_msg({Session, Req}, Room) ->
  	Data = Req:parse_qs(),
 	case proplists:lookup("disconnect", Data) of
@@ -33,12 +55,6 @@ do_handle_get_msg({Session, Req}, Room) ->
 			wait_data(Session, Room, Response),
 			Room ! {self(), end_connect}
 	end.
-
-do_post(Any) ->
-	?BASE_MODULE:do_post(Any).
-
-timeout_call(Any) ->
-	?BASE_MODULE:time_call(Any).
 
 wait_data(Session, Room, Response) ->
     Msg = receive
