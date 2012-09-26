@@ -2,6 +2,7 @@
 -extends(xhr_polling).
 %% -compile(export_all).
 -export([do_get/1, do_post/1, timeout_call/1]).
+-define(HEARBEAT_INTERVAL, socketio_web:get_env(heartbeat_interval)*1000).
 
 do_get({Session, Req}) ->
 	Room = session_queue:lookup(Session),
@@ -42,7 +43,7 @@ timeout_call(Any) ->
 wait_data(Session, Room, Response) ->
     Msg = receive
         first ->
-        	?BASE_MODULE:set_timeout(Room, Session),
+			timer:send_after(?HEARBEAT_INTERVAL, Room, {self(), post, "2::"}),
 			"1::";
 		Message ->
 			Message
