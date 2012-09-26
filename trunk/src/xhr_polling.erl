@@ -37,9 +37,11 @@ do_handle_get_msg({Session, Data}, Room) ->
 			Room ! {self(), end_connect},
 			Msg
 	end.
-timeout_call({Session, Endpoint, Type}) ->
+timeout_call({Room, Session}) ->
+	Room ! {self(), unsubscribe, Session};
+timeout_call({Room, Session, Endpoint, Type}) ->
 	Implement = map_server:lookup(Endpoint),
-	Room = session_queue:lookup(Session),
+	%% 	Room = session_queue:lookup(Session),
 	Implement:on_disconnect({Session, Endpoint, timeout}, fun(SendMsg, Others) ->
 				send_call({Session, Type, Endpoint}, SendMsg, Others)
 	end),
@@ -54,19 +56,19 @@ set_timeout(Room, Session, Timeout) ->
 		Any ->
 			Any
 	end,
-	case is_atom(Endpoint) of
-		false ->
-			TimeRef = case timer:apply_after(Timeout, ?MODULE, timeout_call, [{Session, Endpoint, "5"}]) of
-					{ok, TRef} ->
-						TRef;
-					{error, Reason} ->
-						io:format("occurs error now ~p~n", [Reason]),
-						undefined
-				end,
-			Room ! {self(), timeout, TimeRef};
-		true ->
-			void
-	end.
+	Args = case Endpoint of
+		undefined ->
+			{Room, Session};
+		_ ->
+			{Room, Session, Endpoint, "5"}
+	end,
+	TimeRef = case timer:apply_after(Timeout, ?MODULE, timeout_call, [Args]) of
+		{ok, TRef} ->
+			TRef;
+		{error, Reason} ->
+				undefined
+	end,
+	Room ! {self(), timeout, TimeRef}.
 
 do_post_msg({Session,Msg}) ->
 	{[Type, MessageId, Endpoint, SubMsgData]} = socketio_decode:decode(Msg),
@@ -75,7 +77,8 @@ do_post_msg({Session,Msg}) ->
 		undefined ->
 			"7::" ++ Endpoint ++ ":[\"Request Invalide\"]+[\"Please do not do that!\"]";
 		_ ->
-			do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room)
+			do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room),
+			"1"
 	end.
 
 do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room) ->
@@ -105,9 +108,9 @@ do_post({Session, Req}) ->
 	Data = Req:recv_body(),
 	Msg = binary_to_list(Data),
 	
-	do_post_msg({Session, Msg}),
+	Result = do_post_msg({Session, Msg}),
 	
-	Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], "1"});
+	Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], Result});
 
 do_post(_) ->
 	io:format("missing any thing at all now~n").
