@@ -101,7 +101,7 @@ handle_call({lookup_session_pid, Session}, From, State) ->
 		[{Key, Reply}] ->
 			Reply;
 		[] ->
-			 Reply = none
+			 Reply = undefined
 	end,
     {reply, Reply, State};
 
