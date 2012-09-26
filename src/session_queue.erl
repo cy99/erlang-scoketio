@@ -57,17 +57,17 @@ queue(State) ->
             queue(State#state{})
     end.
 
-handle_post_msg({From, Message}, State, htmlfile) ->
+handle_post_msg({_, Message}, State, htmlfile) ->
 	NewMessages = case State#state.defined of
 		undefined ->
-			lists:merge([Message], State#state.messages);
+			lists:merge(State#state.messages, [Message]);
 		Pid ->
 			Pid ! Message,
 			State#state.messages
 	end,
 	{NewMessages, State#state.defined};
 
-handle_post_msg({From, Message}, State, _) ->
+handle_post_msg({_, Message}, State, _) ->
 	case State#state.defined of
 		undefined ->
 			NewDefined = State#state.defined,
