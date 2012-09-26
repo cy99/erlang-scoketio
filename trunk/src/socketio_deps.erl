@@ -1,6 +1,5 @@
-%% @author Mochi Media <dev@mochimedia.com>
-%% @copyright 2010 Mochi Media <dev@mochimedia.com>
-
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
 %% @doc Ensure that the relatively-installed dependencies are on the code
 %%      loading path, and locate resources relative
 %%      to this application's path.

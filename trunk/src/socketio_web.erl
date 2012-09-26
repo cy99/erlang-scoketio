@@ -1,10 +1,18 @@
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio.
+
 -module(socketio_web).
--author('author <yongboy@gmail.com>').
 -export([start/1, stop/0, loop/2]).
 -export([get_env/1]).
 -define(TIMEOUT, 20000).
 -define(TRANSPORTS, [{"xhr-polling", xhr_polling}, {"jsonp-polling", jsonp_polling}, {"htmlfile", htmlfile}]).
 
+%%
+%% API Functions
+%%
+%% @spec start(Options) -> void
+%% @doc init some thing
 start(Options) ->
     {DocRoot, Options1} = get_option(docroot, Options),
     Loop = fun (Req) ->
@@ -18,6 +26,8 @@ start(Options) ->
 
     mochiweb_http:start([{max, 1000000}, {name, ?MODULE}, {loop, Loop} | Options1]).
 
+%% @spec stop() -> void
+%% @doc stop the server
 stop() ->
     mochiweb_http:stop(?MODULE).
 
@@ -37,6 +47,19 @@ loop(Req, DocRoot) ->
             Req:respond({501, [], []})
     end.
 
+%% @spec get_env(Key) -> {ok, Value} | undefined
+%% @doc get env value
+get_env(Key) ->
+	case application:get_env(Key) of
+		{ok, Value} ->
+			Value;		
+		undefined ->
+			undefined
+	end.
+
+%%
+%% Local Functions
+%%
 get_transport(Transport) ->
 	proplists:get_value(Transport, ?TRANSPORTS).
 
@@ -60,14 +83,5 @@ do_request(["socket.io", "1", Transport, Session], Req) ->
 do_request(_, Req) ->
 	Req:not_found().
 
-%% Internal API
 get_option(Option, Options) ->
     {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
-
-get_env(Key) ->
-	case application:get_env(Key) of
-		{ok, Value} ->
-			Value;		
-		undefined ->
-			undefined
-	end.

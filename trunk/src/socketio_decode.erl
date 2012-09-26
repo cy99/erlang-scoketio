@@ -1,20 +1,15 @@
-%% Author: Administrator
-%% Created: 2012-9-18
-%% Description: TODO: Add description to decode
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio.
 -module(socketio_decode).
 -define(PATTERN, "(\\d):(\\d+\\+)?:(/[^:]*)?:?(.*)?").
-%%
-%% Include files
-%%
-
-%%
-%% Exported Functions
-%%
 -export([decode/1]).
 
 %%
 %% API Functions
 %%
+%% @spec decode(Msg) -> {[Type, MessageId, Endpoint, Data]} | {[]}
+%% @doc decode the message, then return splied part
 decode(Msg) ->
 	case decode_structure(Msg) of
 		[] ->
@@ -36,18 +31,3 @@ decode_structure(Msg) ->
 		nomatch ->
 			[]
 	end.
-
-%% message({Msg, ["1", MessageId, Endpoint, Data]}) ->
-%% 	{["1", MessageId, Endpoint, Data], [Msg]};
-%% message({Msg, ["5", MessageId, Endpoint, Data]}) ->
-%% 	case string:len(MessageId) > 0 of
-%% 		true ->
-%% 			Ack = "6::" ++ Endpoint ++ ":" ++ MessageId ++ "[false]",
-%% 			NewMsg = string:join(["5", "", Endpoint, Data], ":"),
-%% 			Messages = [Ack, NewMsg];
-%% 		false ->
-%% 			Messages = [Msg]
-%% 	end,
-%% 	{["5", MessageId, Endpoint, Data], Messages};
-%% message({Msg, [Type, MessageId, Endpoint, Data]}) ->
-%% 	{[Type, MessageId, Endpoint, Data]}.

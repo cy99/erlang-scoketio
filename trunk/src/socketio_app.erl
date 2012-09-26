@@ -1,7 +1,6 @@
-%% @author Mochi Media <dev@mochimedia.com>
-%% @copyright socketio Mochi Media <dev@mochimedia.com>
-
-%% @doc Callbacks for the socketio application.
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio.
 
 -module(socketio_app).
 -author("Mochi Media <dev@mochimedia.com>").
