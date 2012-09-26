@@ -1,5 +1,5 @@
 -module(session_queue).
--export([register/1]).
+-export([register/1, lookup/1]).
 -record(state, {subscribed = false, messages = [], defined, timeRef, endpoint, transport}).
 
 queue(State) ->
@@ -80,8 +80,8 @@ handle_post_msg({From, Message}, State, _) ->
 	{NewMessages, NewDefined}.
 
 register(Session) ->
-    case map_server:lookup_pid(Session) of
-        none ->
+    case lookup(Session) of
+        undefined ->
             NewPid = spawn(fun() ->
                 queue(#state{})
             end),
@@ -90,3 +90,6 @@ register(Session) ->
         Pid ->
             Pid
     end.
+
+lookup(Session) ->
+    map_server:lookup_pid(Session).

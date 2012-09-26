@@ -1,20 +1,28 @@
 -module(xhr_polling).
 %% -compile(export_all).
--export([do_get/1, do_post/1, timeout_call/1, set_timeout/3, do_get_msg/1, do_post_msg/1]).
+-export([do_get/1, do_post/1, timeout_call/1, set_timeout/2, set_timeout/3, do_get_msg/1, do_post_msg/1]).
 -define(HEARBEAT_INTERVAL, socketio_web:get_env(heartbeat_interval)*1000).
 -define(HEARBEAT_TIMEOUT, socketio_web:get_env(heartbeat_timeout)*1000).
 
 do_get({Session, Req}) ->
  	Data = Req:parse_qs(),
 	Msg = do_get_msg({Session, Data}),
-	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], gen_output(Msg)}).
+	Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], gen_output(Msg)}).
 
 do_get_msg({Session, Data}) ->
-	Room = session_queue:register(Session),
+	Room = session_queue:lookup(Session),
+	case Room of
+		undefined ->
+			"7:::[\"Request Invalide\"]+[\"Please do not do that!\"]";
+		_ ->
+			do_handle_get_msg({Session, Data}, Room)
+	end.
+
+do_handle_get_msg({Session, Data}, Room) ->
 	case proplists:lookup("disconnect", Data) of
 		{"disconnect", _} ->
 			set_timeout(Room, Session,1),
-			Msg = "";
+			"";
 		_ ->
 			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
 			Room ! {self(), subscribe, ?MODULE},
@@ -26,23 +34,25 @@ do_get_msg({Session, Data}) ->
 				after ?HEARBEAT_INTERVAL ->
 						"8::"
 				end,			
-			Room ! {self(), end_connect}
-	end,
-	Msg.
-
+			Room ! {self(), end_connect},
+			Msg
+	end.
 timeout_call({Session, Endpoint, Type}) ->
 	Implement = map_server:lookup(Endpoint),
-	Room = session_queue:register(Session),
+	Room = session_queue:lookup(Session),
 	Implement:on_disconnect({Session, Endpoint, timeout}, fun(SendMsg, Others) ->
 				send_call({Session, Type, Endpoint}, SendMsg, Others)
 	end),
 	Room ! {self(), unsubscribe, Session}.
 
+set_timeout(Room, Session) ->
+	set_timeout(Room, Session, ?HEARBEAT_TIMEOUT).
+
 set_timeout(Room, Session, Timeout) ->
 	Room ! {self(),getEndpoint},
-	receive
-		Endpoint ->
-			ok
+	Endpoint = receive
+		Any ->
+			Any
 	end,
 	case is_atom(Endpoint) of
 		false ->
@@ -59,10 +69,16 @@ set_timeout(Room, Session, Timeout) ->
 	end.
 
 do_post_msg({Session,Msg}) ->
-	Room = session_queue:register(Session),
 	{[Type, MessageId, Endpoint, SubMsgData]} = socketio_decode:decode(Msg),
-	
-	%% TODO 此处不是很方便，有待重构
+	Room = session_queue:lookup(Session),
+	case Room of
+		undefined ->
+			"7::" ++ Endpoint ++ ":[\"Request Invalide\"]+[\"Please do not do that!\"]";
+		_ ->
+			do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room)
+	end.
+
+do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room) ->
 	Implement = map_server:lookup(Endpoint),
 	case Type of
 		"0" ->
@@ -91,43 +107,43 @@ do_post({Session, Req}) ->
 	
 	do_post_msg({Session, Msg}),
 	
-	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], "1"});
+	Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], "1"});
 
 do_post(_) ->
 	io:format("missing any thing at all now~n").
 %%
 %% Local Functions
 %%
-send_call({Session, Type, Endpoint}, SendMsg, ack) ->
-	Room = session_queue:register(Session),
+send_call({Session, _, Endpoint}, SendMsg, ack) ->
+	Room = session_queue:lookup(Session),
 	Message = {self(), post, string:join(["6", "", Endpoint, SendMsg], ":")},
 	pid_sent(Message, Room);
 send_call({Session, Type, Endpoint}, SendMsg, self) ->
-	Room = session_queue:register(Session),
+	Room = session_queue:lookup(Session),
 	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
 	pid_sent(Message, Room);
 
-send_call({Session, Type, Endpoint}, SendMsg, TargetSessiones = [H|T]) ->
+send_call({_, Type, Endpoint}, SendMsg, TargetSessiones = [_|_]) ->
 	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
 	lists:foreach(fun(TargetSession) -> 
-			Room = session_queue:register(TargetSession),
+			Room = session_queue:lookup(TargetSession),
 			pid_sent(Message, Room)
 		end, TargetSessiones);
 
-send_call({Session, Type, Endpoint}, SendMsg, {TargetSessions=[H|T], MessageType}) ->
+send_call({_, _, Endpoint}, SendMsg, {TargetSessions=[_|_], MessageType}) ->
 	Message = {self(), post, string:join([MessageType, "", Endpoint, SendMsg], ":")},
 	lists:foreach(fun(TargetSession) ->
-						  Room = session_queue:register(TargetSession),
+						  Room = session_queue:lookup(TargetSession),
 						  pid_sent(Message, Room)
 				  end, TargetSessions);
 
-send_call({Session, Type, Endpoint}, SendMsg, {TargetSession, MessageType}) ->
-	Room = session_queue:register(TargetSession),
+send_call({_, _, Endpoint}, SendMsg, {TargetSession, MessageType}) ->
+	Room = session_queue:lookup(TargetSession),
 	Message = {self(), post, string:join([MessageType, "", Endpoint, SendMsg], ":")},
 	pid_sent(Message, Room);
 
-send_call({Session, Type, Endpoint}, SendMsg, TargetSession) ->
-	Room = session_queue:register(TargetSession),
+send_call({_, Type, Endpoint}, SendMsg, TargetSession) ->
+	Room = session_queue:lookup(TargetSession),
 	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
 	pid_sent(Message, Room).
 
@@ -136,4 +152,4 @@ pid_sent(Msg, Pid) ->
 
 gen_output(String) ->
 	[DescList] = io_lib:format("~ts", [String]),
-    Bin = erlang:iolist_to_binary(DescList).
+    erlang:iolist_to_binary(DescList).

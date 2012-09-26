@@ -49,8 +49,11 @@ do_post(Any, Req) ->
 	Req:respond({501, [], []}).
 
 do_request(["socket.io", "1"], Req) ->
-	Msg = io_lib:format("~s:~p:~p:~s", [uuid_server:gen(), get_env(heartbeat_timeout), get_env(close_timeout), get_env(allow_transports)]),
-	Req:ok({"text/plain; charset=utf-8", [{"server", "Mochiweb-Test"}], Msg});
+	UUID = uuid_server:gen(),
+	Msg = io_lib:format("~s:~p:~p:~s", [UUID, get_env(heartbeat_timeout), get_env(close_timeout), get_env(allow_transports)]),
+	Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], Msg}),
+	Room = session_queue:register(UUID),
+	xhr_polling:set_timeout(Room, UUID);
 do_request(["socket.io", "1", Transport, Session], Req) ->
 	NewTransport = get_transport(Transport),
 	NewTransport:do_get({Session, Req});
