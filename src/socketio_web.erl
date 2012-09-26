@@ -45,15 +45,15 @@ do_post(["socket.io", "1", Transport, Session], Req) ->
 	NewTransport:do_post({Session, Req});
 do_post([], Req) ->
 	Req:not_found();
-do_post(Any, Req) ->
+do_post(_, Req) ->
 	Req:respond({501, [], []}).
 
 do_request(["socket.io", "1"], Req) ->
 	UUID = uuid_server:gen(),
-	Msg = io_lib:format("~s:~p:~p:~s", [UUID, get_env(heartbeat_timeout), get_env(close_timeout), get_env(allow_transports)]),
-	Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], Msg}),
 	Room = session_queue:register(UUID),
-	xhr_polling:set_timeout(Room, UUID);
+	xhr_polling:set_timeout(Room, UUID),
+	Msg = io_lib:format("~s:~p:~p:~s", [UUID, get_env(heartbeat_timeout), get_env(close_timeout), get_env(allow_transports)]),
+	Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], Msg});
 do_request(["socket.io", "1", Transport, Session], Req) ->
 	NewTransport = get_transport(Transport),
 	NewTransport:do_get({Session, Req});
