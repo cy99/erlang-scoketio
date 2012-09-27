@@ -17,6 +17,6 @@
 	{env, [{heartbeat_interval, 20},
   		 {heartbeat_timeout, 60},
          {close_timeout, 60},
-         {allow_transports, "htmlfile,xhr-polling,jsonp-polling"},
+         {allow_transports, "jsonp-polling,xhr-polling,htmlfile"},
          {flash_policy_server, true}]}
 ]}.

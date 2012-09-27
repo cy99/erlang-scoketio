@@ -65,31 +65,5 @@ do_request(_, Req) ->
 get_option(Option, Options) ->
     {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
 
-get_post_values(Req) ->
-    {Method, _} = cowboy_http_req:method(Req),
-    get_post_values(Method, Req).
-
-get_post_values('POST', Req) ->
-    {Vals, _} = cowboy_http_req:body_qs(Req),
-    Vals;
-get_post_values(_, _) ->
-    undefined.
-
-get_post_value(Name, Req) ->
-    PostVals = get_post_values(Req),
-    extract_post_value(Name, PostVals).
-
-extract_post_value(_, undefined) ->
-    undefined;
-extract_post_value(Name, PostVals) ->
-    Matches = [X || X <- PostVals, Name =:= element(1,X)],
-    process_post_value(Matches).
-
-process_post_value([]) ->
-    undefined;
-process_post_value(Vals) ->
-    {_, Result} = lists:unzip(Vals),
-    Result.
-
 terminate(_Req, _State) ->
 	ok.

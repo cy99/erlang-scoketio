@@ -22,7 +22,7 @@ do_get({Session, Req}) ->
 	io:format("had got the msg now render message ~s~n", [Msg]),
 	cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], list_to_binary(Msg), NewReg).
 
-%% @spec do_get_msg({Session, Data}) -> Msg
+%% @spec do_get_msg({Session, Disconnected}) -> Msg
 %% @doc just export for htmlfile/jsonp module to call
 do_get_msg({Session, Disconnected}) ->
 	io:format("going to got message now ~n"),

@@ -13,21 +13,30 @@
 %% @spec do_get({Session, Req}) -> void
 %% @doc server for do get method
 do_get({Session, Req}) ->
-	Data = Req:parse_qs(),
-	Msg = ?BASE_MODULE:do_get_msg({Session, Data}),
-	Req:ok({"application/x-javascript; charset=utf-8", 
-			[{"server", "socket.io server"}, {"X-XSS-Protection", "0"}, {"Connection", "keep-alive"}], 
-			gen_output(proplists:get_value("i", Data), Msg)}).
+	{I, Req2} = cowboy_http_req:qs_val(<<"i">>, Req),
+	Disconnected = case cowboy_http_req:qs_val(<<"disconnect">>, Req) of
+		{undefined, NewReg} -> false;
+		{_, NewReg} -> true
+	end,
+	Msg = ?BASE_MODULE:do_get_msg({Session, Disconnected}),
+
+	cowboy_http_req:reply(200, [
+			{<<"Content-Type">>, 
+			<<"application/x-javascript; charset=utf-8">>},
+			{<<"X-XSS-Protection">>, <<"0">>}, 
+			{<<"Connection">>, <<"keep-alive">>}
+		], 
+		gen_output(I, Msg), Req2).
 
 %% @spec do_post(Any) -> void
 %% @doc server for do post method
 do_post({Session, Req}) ->
-	Data = Req:parse_post(),
-	OriMsg = proplists:get_value("d", Data),
+	Binary = list_to_binary(get_post_value(<<"d">>, Req)),
+	OriMsg = binary_to_list(Binary),
 	Msg2 = string:substr(OriMsg, 2, string:len(OriMsg)-2),
 	Msg = re:replace(Msg2, "\\\\+", "", [global]),
-	?BASE_MODULE:do_post_msg({Session, Msg}),
-	Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], "1"});
+	Result = ?BASE_MODULE:do_post_msg({Session, Msg}),
+	cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], list_to_binary(Result), Req);
 do_post(Any) ->
 	?BASE_MODULE:do_post(Any).
 
@@ -41,4 +50,31 @@ timeout_call(Any) ->
 %%
 gen_output(I, Msg) ->
 	DescList = io_lib:format("io.j[~s]('~s');", [I, Msg]),
-	lists:flatten(DescList).
+	list_to_binary(DescList).
+
+
+get_post_values(Req) ->
+    {Method, _} = cowboy_http_req:method(Req),
+    get_post_values(Method, Req).
+
+get_post_values('POST', Req) ->
+    {Vals, _} = cowboy_http_req:body_qs(Req),
+    Vals;
+get_post_values(_, _) ->
+    undefined.
+
+get_post_value(Name, Req) ->
+    PostVals = get_post_values(Req),
+    extract_post_value(Name, PostVals).
+
+extract_post_value(_, undefined) ->
+    undefined;
+extract_post_value(Name, PostVals) ->
+    Matches = [X || X <- PostVals, Name =:= element(1,X)],
+    process_post_value(Matches).
+
+process_post_value([]) ->
+    undefined;
+process_post_value(Vals) ->
+    {_, Result} = lists:unzip(Vals),
+    Result.

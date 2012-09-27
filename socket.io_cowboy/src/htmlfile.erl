@@ -18,9 +18,7 @@ do_get({Session, Req}) ->
 	case Room of
 		undefined ->
 			Msg = "7:::[\"Request Invalide\"]+[\"Please do not do that!\"]",
-			Req:ok({"text/html; charset=utf-8",
-                                      [{"Server" ,"socket.io server"}, {"Connection", "keep-alive"}],
-                                      Msg});
+			cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], list_to_binary(Msg), Req);
 		_ ->
 			do_handle_get_msg({Session, Req}, Room)
 	end.
@@ -39,24 +37,24 @@ timeout_call(Any) ->
 %% Local Functions
 %%
 do_handle_get_msg({Session, Req}, Room) ->
- 	Data = Req:parse_qs(),
-	case proplists:lookup("disconnect", Data) of
-		{"disconnect", _} ->
-			?BASE_MODULE:set_timeout(Room, Session,1),
-			Req:ok({"text/plain; charset=utf-8", [{"server", "socket.io server"}], ""});
-		_ ->
-			Response = Req:ok({"text/html; charset=utf-8",
-                                      [{"Server" ,"socket.io server"}, {"Connection", "keep-alive"}],
-                                      chunked}),
-			
-			Response:write_chunk("<html><body><script>var _ = function (msg) { parent.s._(msg, document); };</script>"
-								"                                                                                                                                                                               "),
+ 	Disconnected = case cowboy_http_req:qs_val(<<"disconnect">>, Req) of
+		{undefined, NewReg} -> false;
+		{_, NewReg} -> true
+	end,
+	case Disconnected of
+		true ->
+			?BASE_MODULE:set_timeout(Room, Session, 1),
+			cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], <<"">>, Req);
+		false ->
+			{ok, Req2} = cowboy_http_req:chunked_reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], Req),
+			cowboy_http_req:chunk("<html><body><script>var _ = function (msg) { parent.s._(msg, document); };</script>                                                                                                                                                                               ", 
+								Req2),
 			Room ! {self(), subscribe, ?MODULE},
-			wait_data(Session, Room, Response),
+			wait_data(Session, Room, Req2),
 			Room ! {self(), end_connect}
 	end.
 
-wait_data(Session, Room, Response) ->
+wait_data(Session, Room, Req2) ->
     Msg = receive
         first ->
 			timer:send_after(?HEARBEAT_INTERVAL, Room, {self(), post, "2::"}),
@@ -65,8 +63,8 @@ wait_data(Session, Room, Response) ->
 			Message
     end,
 	
-    Response:write_chunk(gen_output(Msg)),
-    wait_data(Session, Room, Response).
+    cowboy_http_req:chunk(gen_output(Msg), Req2),
+    wait_data(Session, Room, Req2).
 
 gen_output(String) ->
 	DescList = io_lib:format("<script>_('~s');</script>", [String]),
