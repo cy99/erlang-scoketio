@@ -1,2 +1,4 @@
 Just another erlang socket.io server.
-Coding now ...
+base on R15B
+
+socket.io_mochiweb just base on mochiweb project, just support xhr-polling, jsonp-polling, htmlfile transport
