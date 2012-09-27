@@ -158,13 +158,19 @@ send_call({Session, Type, Endpoint}, SendMsg, self) ->
 	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
 	pid_sent(Message, Room);
 
-send_call({_, Type, Endpoint}, SendMsg, TargetSessiones = [_|_]) ->
+send_call(_, _, []) ->
+	void;
+send_call({_, Type, Endpoint}, SendMsg, TargetSessiones = [H|T]) ->
 	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
+	io:format("Send_Call TargetSessiones size is ~p~n", [length(TargetSessiones)]),
 	lists:foreach(fun(TargetSession) -> 
 			Room = session_queue:lookup(TargetSession),
-			pid_sent(Message, Room)
+			Result = pid_sent(Message, Room),
+			io:format("Send Result is ~p~n",[Result])
 		end, TargetSessiones);
 
+send_call(_, _, {[], _}) ->
+	void;
 send_call({_, _, Endpoint}, SendMsg, {TargetSessions=[_|_], MessageType}) ->
 	Message = {self(), post, string:join([MessageType, "", Endpoint, SendMsg], ":")},
 	lists:foreach(fun(TargetSession) ->
@@ -178,13 +184,16 @@ send_call({_, _, Endpoint}, SendMsg, {TargetSession, MessageType}) ->
 	pid_sent(Message, Room);
 
 send_call({_, Type, Endpoint}, SendMsg, TargetSession) ->
+	io:format("Onley TargetSession is ~p~n", [TargetSession]),
 	Room = session_queue:lookup(TargetSession),
 	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
 	pid_sent(Message, Room).
 
 pid_sent(Msg, Pid) ->
+	io:format("Pid send Msg is ~p~n", [Msg]),
 	Pid ! Msg.
 
 gen_output(String) ->
-	[DescList] = io_lib:format("~ts", [String]),
-    erlang:iolist_to_binary(DescList).
+	list_to_binary(String).
+%% 	[DescList] = io_lib:format("~ts", [String]),
+%%     erlang:iolist_to_binary(DescList).
