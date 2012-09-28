@@ -2,7 +2,6 @@
 -behaviour(cowboy_http_handler).
 -export([init/3, handle/2, terminate/2]).
 -define(TRANSPORTS, [{<<"xhr-polling">>, xhr_polling}, {<<"jsonp-polling">>, jsonp_polling}, {<<"htmlfile">>, htmlfile}]).
--define(TIMEOUT, 60000).
 
 init({_Any, http}, Req, []) ->
 %% 	{ok, Req, undefined, ?TIMEOUT, hibernate}.

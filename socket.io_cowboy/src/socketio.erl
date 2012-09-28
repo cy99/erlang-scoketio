@@ -42,7 +42,14 @@ start(_Type, _Args) ->
 	%% register the demo implemention
 	map_server:register("/chat", chat_demo),
 	
-	socketio_deps:ensure(),
+	case get_env(flash_policy_port) of
+		undefined ->
+			void;
+		Port ->
+			flash_security_server:start(Port)
+	end,
+	
+%% 	socketio_deps:ensure(),
 	socketio_sup:start_link().
 
 stop(_State) ->
