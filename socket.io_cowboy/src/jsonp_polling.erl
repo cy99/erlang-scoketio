@@ -36,7 +36,7 @@ do_post({Session, Req}) ->
 	Msg2 = string:substr(OriMsg, 2, string:len(OriMsg)-2),
 	Msg = re:replace(Msg2, "\\\\+", "", [global]),
 	Result = ?BASE_MODULE:do_post_msg({Session, Msg}),
-	cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], list_to_binary(Result), Req);
+	cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain; charset=utf-8">>}], list_to_binary(Result), Req);
 do_post(Any) ->
 	?BASE_MODULE:do_post(Any).
 

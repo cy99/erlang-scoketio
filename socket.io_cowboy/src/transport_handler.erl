@@ -24,10 +24,14 @@ handle(Req, State) ->
 			%% io:format("POST METHOD NOW WITH outputVal ~p~n", [OutputVal]);
 			{ok, Req3} = do_post(Tokens, Req);
 		'GET' ->
-			{ok, Req2} = cowboy_http_req:set_resp_header(<<"Connection">>, <<"keep-alive">>, Req),
-			{ok, Req3} = do_request(Tokens, cowboy_http_req:compact(Req2));
+			{T, Req2} = cowboy_http_req:qs_val(<<"t">>, Req),
+			io:format("**************************Time is ~p~n", [T]),
+			{ok, Req22} = cowboy_http_req:set_resp_header(<<"Connection">>, <<"keep-alive">>, Req2),
+%% 			{ok, Req3} = do_request(Tokens, cowboy_http_req:compact(Req22));
+			{ok, Req3} = do_request(Tokens, Req22);
 		_ ->
 			Req3 = Req,
+			io:format("not allowed request here ... with Req ~p~n", [Req]),
 			OutputVal = <<"not allowed request">>
 	end,
 %% 	Headers = [{<<"Content-Type">>, <<"text/html, charset=utf-8">>}],

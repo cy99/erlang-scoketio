@@ -17,20 +17,19 @@ start() ->
 start(_Type, _Args) ->
 	Dispatch = [
 		{'_', [
-			{[<<"websocket">>], websocket_handler, []},
-			{[<<"eventsource">>], eventsource_handler, []},
-			{[<<"eventsource">>, <<"live">>], eventsource_emitter, []},
 %% 			{['...'], cowboy_http_static, [{directory, {priv_dir, static, []}}]}
 %% 			{['...'], cowboy_http_static, [{directory, {priv_dir, <<"priv/www">>, []}}]}
+			{[<<"socket.io">>, <<"1">>, <<"websocket">>, '...'], websocket_handler, []},
+			{[<<"socket.io">>, <<"1">>, <<"flashsocket">>, '...'], websocket_handler, []},
 			{[<<"socket.io">>, <<"1">>, '...'], transport_handler, []},
 			{['...'], cowboy_static_handler, [{path, <<"priv/www">>}]}
 		]}
 	],
-	cowboy:start_listener(my_http_listener, 100,
+	cowboy:start_listener(my_http_listener, 1000,
 		cowboy_tcp_transport, [{port, 8080}],
 		cowboy_http_protocol, [{dispatch, Dispatch}]
 	),
-	cowboy:start_listener(my_https_listener, 100,
+	cowboy:start_listener(my_https_listener, 1000,
 		cowboy_ssl_transport, [
 			{port, 8443}, {certfile, "priv/ssl/cert.pem"},
 			{keyfile, "priv/ssl/key.pem"}, {password, "cowboy"}],

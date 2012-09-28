@@ -10,7 +10,6 @@
 %%
 %% API Functions
 %%
-
 %% @spec do_get({Session, Req}) -> void
 %% @doc server for do get method
 do_get({Session, Req}) ->
@@ -47,10 +46,11 @@ do_handle_get_msg({Session, Req}, Room) ->
 			cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], <<"">>, Req);
 		false ->
 			{ok, Req2} = cowboy_http_req:chunked_reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], Req),
-			cowboy_http_req:chunk("<html><body><script>var _ = function (msg) { parent.s._(msg, document); };</script>                                                                                                                                                                               ", 
+			cowboy_http_req:chunk("<html><body><script>var _ = function (msg) { parent.s._(msg, document); };</script>                                                                                                                                                                                                                  ", 
 								Req2),
 			Room ! {self(), subscribe, ?MODULE},
 			wait_data(Session, Room, Req2),
+			io:format("htmlfile end_connect~n"),
 			Room ! {self(), end_connect}
 	end.
 
@@ -59,13 +59,17 @@ wait_data(Session, Room, Req2) ->
         first ->
 			timer:send_after(?HEARBEAT_INTERVAL, Room, {self(), post, "2::"}),
 			"1::";
+		{_, _} ->
+			wait_data(Session, Room, Req2);
 		Message ->
 			Message
     end,
 	
+	io:format("htmlfile Msg is ~p~n", [Msg]),
     cowboy_http_req:chunk(gen_output(Msg), Req2),
     wait_data(Session, Room, Req2).
 
 gen_output(String) ->
-	DescList = io_lib:format("<script>_('~s');</script>", [String]),
-	lists:flatten(DescList).
+	DescList = io_lib:format("<script>_(~p);</script>", [String]),
+	list_to_binary(DescList).
+%% 	lists:flatten(DescList).

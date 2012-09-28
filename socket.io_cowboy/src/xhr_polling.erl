@@ -13,7 +13,8 @@
 %% @spec do_get({Session, Req}) -> void
 %% @doc server for do get method
 do_get({Session, Req}) ->
-	io:format("session is ~s~n", [Session]),
+	{T, _} = cowboy_http_req:qs_val(<<"t">>, Req),
+	io:format("session is ~s and time is ~p~n", [Session, T]),
 	Disconnected = case cowboy_http_req:qs_val(<<"disconnect">>, Req) of
 		{undefined, NewReg} -> false;
 		{_, NewReg} -> true
@@ -38,12 +39,16 @@ do_get_msg({Session, Disconnected}) ->
 %% @spec do_post(Any) -> void
 %% @doc server for do post method
 do_post({Session, Req}) ->
-	{ok, Data, _} = cowboy_http_req:body(Req),
-	Msg = binary_to_list(Data),
-	io:format("got Msg is ~p~n", [Msg]),
-	Result = do_post_msg({Session, Msg}),
+	Result = case cowboy_http_req:body(Req) of
+		{ok, Data, _} ->
+			Msg = binary_to_list(Data),
+			io:format("do_post got Msg is ~p~n", [Msg]),
+			do_post_msg({Session, Msg});
+		{error,timeout} ->
+			io : format("got timeout now ~"),
+			"1"
+	end,		
 	io:format("got Result is ~p~n", [Result]),
-	
 	cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], list_to_binary(Result), Req);
 do_post(_) ->
 	io:format("missing any thing at all now~n").
