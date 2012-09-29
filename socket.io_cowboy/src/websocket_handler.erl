@@ -26,10 +26,10 @@ terminate(_Req, _State) ->
 websocket_init(_Any, Req, []) ->
 %% 	Req2 = cowboy_http_req:compact(Req),
 	Session = get_session(Req),
-	io:format("got Session is ~p~n", [Session]),
+	lager:debug("got Session is ~p", [Session]),
 	case session_queue:lookup(Session) of
 		undefined ->
-			io:format("does not got room now~n"),
+			lager:debug("does not got room now"),
 			void;
 		Room ->
 			Room ! {self(), subscribe, websocket}
@@ -48,13 +48,13 @@ websocket_handle({text, Data}, Req, State) ->
 %% 			ok
 %% 	end,
 
-	io:format("websocket receive Msg is ~p and Session is ~p~n", [Msg, Session]),
+	lager:debug("websocket receive Msg is ~p and Session is ~p", [Msg, Session]),
 	Result = string:join(["5:", "/chat", ?BASE_MODULE:do_post_msg({Session, Msg})], ":"),
-	io:format("Result write back ~s~n", [Result]),
+	lager:debug("Result write back ~s", [Result]),
 	BinaryResult = list_to_binary(Result),
 	{reply, {text, BinaryResult}, Req, State, hibernate};
 websocket_handle(_, Req, State) ->
-	io:format("has nothing to do here~n", []),
+	lager:debug("has nothing to do here", []),
 	{ok, Req, State}.
 
 %% 处理来做进程的消息的推送
@@ -63,14 +63,14 @@ websocket_info(first, Req, State) ->
 	Room = session_queue:lookup(Session),
 	timer:send_after(?HEARBEAT_INTERVAL, Room, {self(), post, "2::"}),
 	%%{ok, Req, State, hibernate};
-	io:format("now send back 1::~n"),
+	lager:debug("now send back 1::"),
 	{reply, {text, <<"1::">>}, Req, State, hibernate};
 websocket_info(true, Req, State) ->
-	io:format("invalude call with true parameter~n"),
+	lager:debug("invalude call with true parameter"),
 	{ok, Req, State, hibernate};
 websocket_info(Msg, Req, State) ->
-	io:format("now send Msg ...............................................~n", []),
-	io:format("now send Msg is ~s~n", [Msg]),
+	lager:debug("now send Msg ...............................................", []),
+	lager:debug("now send Msg is ~s", [Msg]),
 	{reply, {text, list_to_binary(Msg)}, Req, State, hibernate}.
 
 websocket_terminate(_Reason, _Req, _State) ->

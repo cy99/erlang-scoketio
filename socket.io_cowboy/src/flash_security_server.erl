@@ -17,5 +17,5 @@ loop(Socket)->
             gen_tcp:send(Socket, Reply),
             loop(Socket);
         {tcp, closed, Socket}->
-            io:format("server closed socket")
+            lager:debug("server closed socket")
     end.

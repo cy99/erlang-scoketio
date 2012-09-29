@@ -49,6 +49,10 @@ start(_Type, _Args) ->
 			flash_security_server:start(Port)
 	end,
 	
+	lager:start(),
+	lager:set_loglevel(lager_console_backend, debug),
+%% 	lager:set_loglevel(lager_file_backend, "console.log", debug),
+	
 %% 	socketio_deps:ensure(),
 	socketio_sup:start_link().
 

@@ -2,7 +2,7 @@
 -export([on_connect/2, on_disconnect/2, on_message/2]).
 
 on_connect({Session, MessageId, Endpoint, OriMessage}, SendFn) ->
-	io:format("chat demo was called on_connect funtion with OriMsg : ~s and session id ~s ~n", [OriMessage, Session]).
+	lager:debug("chat demo was called on_connect funtion with OriMsg : ~s and session id ~s ~n", [OriMessage, Session]).
 
 on_disconnect({Session, Endpoint, SubMsgData}, SendFn) ->
 	NickMap = register_spawn(),		

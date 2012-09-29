@@ -16,21 +16,21 @@ handle(Req, State) ->
 	case Method of
 		'POST' ->
 			%% OutputVal = list_to_binary(get_post_value(<<"d">>, Req)),
-			%% io:format("POST METHOD NOW WITH outputVal ~p~n", [OutputVal]);
+			%% lager:debug("POST METHOD NOW WITH outputVal ~p~n", [OutputVal]);
 			%% 获取不带参数的post值
 			%% OutputVal = cowboy_http_req:body_qs(Req),
 			%% {ok, OutputVal, Req2} = cowboy_http_req:body(Req),
-			%% io:format("POST METHOD NOW WITH outputVal ~p~n", [OutputVal]);
+			%% lager:debug("POST METHOD NOW WITH outputVal ~p~n", [OutputVal]);
 			{ok, Req3} = do_post(Tokens, Req);
 		'GET' ->
 			{T, Req2} = cowboy_http_req:qs_val(<<"t">>, Req),
-			io:format("**************************Time is ~p~n", [T]),
+			lager:debug("**************************Time is ~p~n", [T]),
 			{ok, Req22} = cowboy_http_req:set_resp_header(<<"Connection">>, <<"keep-alive">>, Req2),
 %% 			{ok, Req3} = do_request(Tokens, cowboy_http_req:compact(Req22));
 			{ok, Req3} = do_request(Tokens, Req22);
 		_ ->
 			Req3 = Req,
-			io:format("not allowed request here ... with Req ~p~n", [Req]),
+			lager:debug("not allowed request here ... with Req ~p~n", [Req]),
 			OutputVal = <<"not allowed request">>
 	end,
 %% 	Headers = [{<<"Content-Type">>, <<"text/html, charset=utf-8">>}],

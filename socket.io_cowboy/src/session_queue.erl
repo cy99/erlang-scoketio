@@ -83,13 +83,13 @@ queue(State) ->
     end.
 
 handle_post_msg({_, Message}, State, websocket) ->
-	io:format("handle_post_msg ~n", []),
+	lager:debug("handle_post_msg ~n", []),
 	NewMessages = case State#state.defined of
 		undefined ->
-			io:format("undefined~n", []),
+			lager:debug("undefined~n", []),
 			lists:merge(State#state.messages, [Message]);
 		Pid ->
-			io:format("Pid ! Message here ~p~n", [Message]),
+			lager:debug("Pid ! Message here ~p~n", [Message]),
 			Pid ! Message,
 			State#state.messages
 	end,

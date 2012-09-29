@@ -50,7 +50,7 @@ do_handle_get_msg({Session, Req}, Room) ->
 								Req2),
 			Room ! {self(), subscribe, ?MODULE},
 			wait_data(Session, Room, Req2),
-			io:format("htmlfile end_connect~n"),
+			lager:debug("htmlfile end_connect~n"),
 			Room ! {self(), end_connect}
 	end.
 
@@ -65,7 +65,7 @@ wait_data(Session, Room, Req2) ->
 			Message
     end,
 	
-	io:format("htmlfile Msg is ~p~n", [Msg]),
+	lager:debug("htmlfile Msg is ~p~n", [Msg]),
     cowboy_http_req:chunk(gen_output(Msg), Req2),
     wait_data(Session, Room, Req2).
 
