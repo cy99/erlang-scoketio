@@ -73,7 +73,7 @@ queue(State) ->
 		{From, endpoint, NewEndpoint} ->
 			queue(State#state{endpoint=NewEndpoint});
 		{From, getEndpoint} ->
-			From ! State#state.endpoint,
+			From ! {endpoint, State#state.endpoint},
             queue(State#state{});
         {From, post, Message} ->
 			{NewMessages, NewDefined} = handle_post_msg({From, Message}, State, State#state.transport),
@@ -83,13 +83,11 @@ queue(State) ->
     end.
 
 handle_post_msg({_, Message}, State, websocket) ->
-	lager:debug("handle_post_msg ~n", []),
 	NewMessages = case State#state.defined of
 		undefined ->
 			lager:debug("undefined~n", []),
 			lists:merge(State#state.messages, [Message]);
 		Pid ->
-			lager:debug("Pid ! Message here ~p~n", [Message]),
 			Pid ! {reply, Message},
 			State#state.messages
 	end,
@@ -99,7 +97,7 @@ handle_post_msg({_, Message}, State, htmlfile) ->
 		undefined ->
 			lists:merge(State#state.messages, [Message]);
 		Pid ->
-			Pid ! Message,
+			Pid ! {reply, Message},
 			State#state.messages
 	end,
 	{NewMessages, State#state.defined};

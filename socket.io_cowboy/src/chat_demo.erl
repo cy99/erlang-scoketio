@@ -5,7 +5,7 @@ on_connect({Session, MessageId, Endpoint, OriMessage}, SendFn) ->
 	lager:debug("chat demo was called on_connect funtion with OriMsg : ~s and session id ~s ~n", [OriMessage, Session]).
 
 on_disconnect({Session, Endpoint, SubMsgData}, SendFn) ->
-	NickMap = register_spawn(),		
+	NickMap = register_spawn(),
 	NickMap ! {self(), lookup, Session},
 	receive
 		{ok, Nickname, _} -> ok
@@ -26,7 +26,7 @@ on_message({Session, Type, MessageId, Endpoint, Message}, SendFn) ->
 	case string:len(MessageId) > 0  of
 		true ->
 			Ack = MessageId ++ "[false]",
-			 SendFn(Ack, ack);
+			SendFn(Ack, ack);
 		false -> ok			
 	end,
 	{_,D} = mochijson2:decode(Message),

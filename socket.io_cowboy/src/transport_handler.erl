@@ -1,7 +1,8 @@
 -module(transport_handler).
 -behaviour(cowboy_http_handler).
 -export([init/3, handle/2, terminate/2]).
--define(TRANSPORTS, [{<<"xhr-polling">>, xhr_polling}, {<<"jsonp-polling">>, jsonp_polling}, {<<"htmlfile">>, htmlfile}]).
+%% -define(TRANSPORTS, [{<<"xhr-polling">>, xhr_polling}, {<<"jsonp-polling">>, jsonp_polling}, {<<"htmlfile">>, htmlfile}]).
+-define(TRANSPORTS, [{<<"jsonp-polling">>, jsonp_polling}, {<<"htmlfile">>, htmlfile}]).
 
 init({_Any, http}, Req, []) ->
 %% 	{ok, Req, undefined, ?TIMEOUT, hibernate}.

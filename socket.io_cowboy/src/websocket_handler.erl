@@ -26,7 +26,6 @@ terminate(_Req, _State) ->
 websocket_init(_Any, Req, []) ->
 %% 	Req2 = cowboy_http_req:compact(Req),
 	Session = get_session(Req),
-	lager:debug("got Session is ~p", [Session]),
 	case session_queue:lookup(Session) of
 		undefined ->
 			lager:debug("does not got room now"),
@@ -40,17 +39,16 @@ websocket_init(_Any, Req, []) ->
 websocket_handle({text, Data}, Req, State) ->
 	Session = get_session(Req),
 	Msg = binary_to_list(Data),
-%% 	case Msg =:= <<"1::">> of
-%% 		true ->
-%% 			Room = session_queue:lookup(Session),
-%% 			Room ! {self(), subscribe, websocket};
-%% 		false ->
-%% 			ok
-%% 	end,
 
-	lager:debug("websocket receive Msg is ~p and Session is ~p", [Msg, Session]),
-	Result = string:join(["5:", "/chat", ?BASE_MODULE:do_post_msg({Session, Msg})], ":"),
-	lager:debug("Result write back ~s", [Result]),
+	HandleMsg = ?BASE_MODULE:do_post_msg({Session, Msg}),
+	Room = session_queue:register(Session),
+	Room ! {self(), getEndpoint},
+	Endpoint = receive
+		{endpoint, TargetEndpoint} ->
+			TargetEndpoint
+	end,
+	%% TODO 去除掉"/chat"
+	Result = string:join(["5:", Endpoint, HandleMsg], ":"),
 	BinaryResult = list_to_binary(Result),
 	{reply, {text, BinaryResult}, Req, State, hibernate};
 websocket_handle(_, Req, State) ->
@@ -63,10 +61,8 @@ websocket_info({reply, first}, Req, State) ->
 	Room = session_queue:lookup(Session),
 	timer:send_after(?HEARBEAT_INTERVAL, Room, {self(), post, "2::"}),
 	%%{ok, Req, State, hibernate};
-	lager:debug("now send back 1::"),
 	{reply, {text, <<"1::">>}, Req, State, hibernate};
 websocket_info({reply, Msg}, Req, State) ->
-	lager:debug("now send Msg is ~s", [Msg]),
 	{reply, {text, list_to_binary(Msg)}, Req, State, hibernate};
 websocket_info(Any, Req, State) ->
 	lager:debug("~p invalude call with true parameter", [Any]),

@@ -14,25 +14,21 @@
 %% @doc server for do get method
 do_get({Session, Req}) ->
 	{T, _} = cowboy_http_req:qs_val(<<"t">>, Req),
-	lager:debug("session is ~s and time is ~p~n", [Session, T]),
 	Disconnected = case cowboy_http_req:qs_val(<<"disconnect">>, Req) of
 		{undefined, NewReg} -> false;
 		{_, NewReg} -> true
 	end,
 	Msg = do_get_msg({Session, Disconnected}),
-	lager:debug("had got the msg now render message ~s~n", [Msg]),
 	cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], list_to_binary(Msg), NewReg).
 
 %% @spec do_get_msg({Session, Disconnected}) -> Msg
 %% @doc just export for htmlfile/jsonp module to call
 do_get_msg({Session, Disconnected}) ->
-	lager:debug("going to got message now ~n"),
 	Room = session_queue:register(Session),
 	case Room of
 		undefined ->
 			"7:::[\"Request Invalide\"]+[\"Please do not do that!\"]";
 		_ ->
-			lager:debug("going to 2 got message now ~n"),
 			do_handle_get_msg({Session, Disconnected}, Room)
 	end.
 
@@ -42,13 +38,11 @@ do_post({Session, Req}) ->
 	Result = case cowboy_http_req:body(Req) of
 		{ok, Data, _} ->
 			Msg = binary_to_list(Data),
-			lager:debug("do_post got Msg is ~p~n", [Msg]),
 			do_post_msg({Session, Msg});
-		{error,timeout} ->
-			io : format("got timeout now ~"),
+		{error, timeout} ->
+			io:format("got timeout now ~"),
 			"1"
 	end,		
-	lager:debug("got Result is ~p~n", [Result]),
 	cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], list_to_binary(Result), Req);
 do_post(_) ->
 	lager:debug("missing any thing at all now~n").
@@ -86,10 +80,10 @@ set_timeout(Room, Session) ->
 %% @spec set_timeout(Room, Session, Timeout) -> void
 %% @doc set timer execute one time
 set_timeout(Room, Session, Timeout) ->
-	Room ! {self(),getEndpoint},
+	Room ! {self(), getEndpoint},
 	Endpoint = receive
-		Any ->
-			Any
+		{endpoint, TargetEndpoint} ->
+			TargetEndpoint
 	end,
 	Args = case Endpoint of
 		undefined ->
@@ -118,7 +112,6 @@ do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room)
 			Room ! {self(), unsubscribe, Session};
 		"1" ->
 			Room ! {self(), endpoint, Endpoint},
-			lager:debug("post Msg ~s~n", [Msg]),
 			Room ! {self(), post, Msg},
 			Implement:on_connect({Session, MessageId, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
 				send_call({Session, Type, Endpoint}, SendMsg, Others)
@@ -135,11 +128,10 @@ do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room)
 do_handle_get_msg({Session, Disconnected}, Room) ->
 	case Disconnected of
 		true ->
-			set_timeout(Room, Session,1),
+			set_timeout(Room, Session, 1),
 			"";
 		false ->
 			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
-			lager:debug("wait mssage now ...~n"),
 			Room ! {self(), subscribe, ?MODULE},
 			Msg = receive
 					first ->
@@ -149,7 +141,6 @@ do_handle_get_msg({Session, Disconnected}, Room) ->
 				after ?HEARBEAT_INTERVAL ->
 						"8::"
 				end,
-			lager:debug("has got MSG ~p~n", [Msg]),
 			Room ! {self(), end_connect},
 			Msg
 	end.
@@ -167,11 +158,9 @@ send_call(_, _, []) ->
 	void;
 send_call({_, Type, Endpoint}, SendMsg, TargetSessiones = [H|T]) ->
 	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
-	lager:debug("Send_Call TargetSessiones size is ~p~n", [length(TargetSessiones)]),
 	lists:foreach(fun(TargetSession) -> 
 			Room = session_queue:lookup(TargetSession),
-			Result = pid_sent(Message, Room),
-			lager:debug("Send Result is ~p~n",[Result])
+			Result = pid_sent(Message, Room)
 		end, TargetSessiones);
 
 send_call(_, _, {[], _}) ->
@@ -180,7 +169,6 @@ send_call({_, _, Endpoint}, SendMsg, {TargetSessions=[_|_], MessageType}) ->
 	Message = {self(), post, string:join([MessageType, "", Endpoint, SendMsg], ":")},
 	lists:foreach(fun(TargetSession) ->
 						  Room = session_queue:lookup(TargetSession),
-						  lager:info("send_call Message is ~p and TargetSession is ~p and Room(~p)", [Message, TargetSession, Room]),
 						  pid_sent(Message, Room)
 				  end, TargetSessions);
 
@@ -190,7 +178,6 @@ send_call({_, _, Endpoint}, SendMsg, {TargetSession, MessageType}) ->
 	pid_sent(Message, Room);
 
 send_call({_, Type, Endpoint}, SendMsg, TargetSession) ->
-	lager:debug("Only TargetSession is ~p~n", [TargetSession]),
 	Room = session_queue:lookup(TargetSession),
 	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
 	pid_sent(Message, Room).
@@ -198,14 +185,11 @@ send_call({_, Type, Endpoint}, SendMsg, TargetSession) ->
 pid_sent(Msg, Pid) ->
 	case Pid of
 		undefined ->
-			lager:info("Pid is undefined !"),
+			lager:debug("Pid is undefined !"),
 			ok;
 		_ ->
-			lager:debug("Pid send Msg is ~p~n", [Msg]),
 			Pid ! Msg
 	end.
 
 gen_output(String) ->
 	list_to_binary(String).
-%% 	[DescList] = io_lib:format("~ts", [String]),
-%%     erlang:iolist_to_binary(DescList).
