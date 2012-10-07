@@ -37,13 +37,13 @@ queue(State) ->
 					
 					NewSubscribed = if
 						State#state.subscribed == false ->
-							From ! first,
+							From ! {reply, first},
 							true;
 						true ->
 							true
 					end;
 				[H|T] -> %% 若有消息，则发送
-					From ! H,
+					From ! {reply, H},
 					NewDefined = undefined,
 					NewMessages = T,
 					NewSubscribed = true
@@ -90,7 +90,7 @@ handle_post_msg({_, Message}, State, websocket) ->
 			lists:merge(State#state.messages, [Message]);
 		Pid ->
 			lager:debug("Pid ! Message here ~p~n", [Message]),
-			Pid ! Message,
+			Pid ! {reply, Message},
 			State#state.messages
 	end,
 	{NewMessages, State#state.defined};
@@ -110,7 +110,7 @@ handle_post_msg({_, Message}, State, _) ->
 			NewDefined = State#state.defined,
 			NewMessages = lists:merge([Message], State#state.messages);
 		Pid ->
-			Pid ! Message,
+			Pid ! {reply, Message},
 			NewDefined = undefined,
 			NewMessages = State#state.messages
 	end,

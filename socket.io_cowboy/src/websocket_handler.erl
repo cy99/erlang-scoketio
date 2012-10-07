@@ -58,20 +58,19 @@ websocket_handle(_, Req, State) ->
 	{ok, Req, State}.
 
 %% 处理来做进程的消息的推送
-websocket_info(first, Req, State) ->
+websocket_info({reply, first}, Req, State) ->
 	Session = get_session(Req),
 	Room = session_queue:lookup(Session),
 	timer:send_after(?HEARBEAT_INTERVAL, Room, {self(), post, "2::"}),
 	%%{ok, Req, State, hibernate};
 	lager:debug("now send back 1::"),
 	{reply, {text, <<"1::">>}, Req, State, hibernate};
-websocket_info(true, Req, State) ->
-	lager:debug("invalude call with true parameter"),
-	{ok, Req, State, hibernate};
-websocket_info(Msg, Req, State) ->
-	lager:debug("now send Msg ...............................................", []),
+websocket_info({reply, Msg}, Req, State) ->
 	lager:debug("now send Msg is ~s", [Msg]),
-	{reply, {text, list_to_binary(Msg)}, Req, State, hibernate}.
+	{reply, {text, list_to_binary(Msg)}, Req, State, hibernate};
+websocket_info(Any, Req, State) ->
+	lager:debug("~p invalude call with true parameter", [Any]),
+	{ok, Req, State, hibernate}.
 
 websocket_terminate(_Reason, _Req, _State) ->
 	ok.

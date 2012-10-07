@@ -180,6 +180,7 @@ send_call({_, _, Endpoint}, SendMsg, {TargetSessions=[_|_], MessageType}) ->
 	Message = {self(), post, string:join([MessageType, "", Endpoint, SendMsg], ":")},
 	lists:foreach(fun(TargetSession) ->
 						  Room = session_queue:lookup(TargetSession),
+						  lager:info("send_call Message is ~p and TargetSession is ~p and Room(~p)", [Message, TargetSession, Room]),
 						  pid_sent(Message, Room)
 				  end, TargetSessions);
 
@@ -189,14 +190,20 @@ send_call({_, _, Endpoint}, SendMsg, {TargetSession, MessageType}) ->
 	pid_sent(Message, Room);
 
 send_call({_, Type, Endpoint}, SendMsg, TargetSession) ->
-	lager:debug("Onley TargetSession is ~p~n", [TargetSession]),
+	lager:debug("Only TargetSession is ~p~n", [TargetSession]),
 	Room = session_queue:lookup(TargetSession),
 	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
 	pid_sent(Message, Room).
 
 pid_sent(Msg, Pid) ->
-	lager:debug("Pid send Msg is ~p~n", [Msg]),
-	Pid ! Msg.
+	case Pid of
+		undefined ->
+			lager:info("Pid is undefined !"),
+			ok;
+		_ ->
+			lager:debug("Pid send Msg is ~p~n", [Msg]),
+			Pid ! Msg
+	end.
 
 gen_output(String) ->
 	list_to_binary(String).
