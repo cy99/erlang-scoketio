@@ -1,4 +1,4 @@
--module(polling_handler).
+-module(xhr_handler).
 -behaviour(cowboy_http_handler).
 -export([init/3, handle/2, info/3, terminate/2]).
 -define(HEARBEAT_INTERVAL, socketio:get_env(heartbeat_interval)*1000).
@@ -13,8 +13,8 @@ init({_Transport, http}, Req, _State) ->
 			{ok, Req2, Session};
 		'GET' ->
 			Room = session_queue:lookup(Session),
-			xhr_polling:set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
-			Room ! {self(), subscribe, xhr_polling},
+			common_polling:set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
+			Room ! {self(), subscribe, common_polling},
 			TimeoutRef = erlang:send_after(?HEARBEAT_INTERVAL, self(), timeout),
 			{loop, Req2, {Room, Session, TimeoutRef}, ?HEARBEAT_INTERVAL + 1000, hibernate}
 	end.
@@ -24,7 +24,7 @@ handle(Req, Session) ->
 	Result = case cowboy_http_req:body(Req) of
 		{ok, Data, Req2} ->
 			Msg = binary_to_list(Data),
-			xhr_polling:do_post_msg({Session, Msg});
+			common_polling:do_post_msg({Session, Msg});
 		{error, timeout} ->
 			Req2 = Req,
 			"1"

@@ -1,4 +1,6 @@
-%% Feel free to use, reuse and abuse the code in this file.
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio.
 
 -module(socketio_sup).
 -behaviour(supervisor).

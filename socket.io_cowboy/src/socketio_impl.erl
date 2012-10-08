@@ -1,6 +1,6 @@
-%% Author: Administrator
-%% Created: 2012-10-7
-%% Description: TODO: Add description to socketio_impl
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio
 -module(socketio_impl).
 
 %%

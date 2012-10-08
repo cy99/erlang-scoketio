@@ -1,5 +1,6 @@
-%% Feel free to use, reuse and abuse the code in this file.
-
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio.
 -module(socketio).
 -behaviour(application).
 -export([start/0, start/2, stop/1]).
@@ -9,29 +10,44 @@ start() ->
 	application:start(crypto),
 	application:start(public_key),
 	application:start(ssl),
-%% 	application:start(ranch),
 	application:start(cowboy),
-%% 	application:start(static),
 	application:start(socketio).
 
 start(_Type, _Args) ->
 	Dispatch = [
 		{'_', [
-%% 			{['...'], cowboy_http_static, [{directory, {priv_dir, static, []}}]}
-%% 			{['...'], cowboy_http_static, [{directory, {priv_dir, <<"priv/www">>, []}}]}
+			{[<<"socket.io">>, <<"1">>], handshake_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"websocket">>, '...'], websocket_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"flashsocket">>, '...'], websocket_handler, []},
+			{[<<"socket.io">>, <<"1">>, <<"htmlfile">>, '...'], htmlfile_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"jsonp-polling">>, '...'], jsonp_handler, []},
-			{[<<"socket.io">>, <<"1">>, <<"xhr-polling">>, '...'], polling_handler, []},
-%% 			{[<<"socket.io">>, <<"1">>, '...'], transport_handler, []},
-			{[<<"socket.io">>, <<"1">>], transport_handler, []},
+			{[<<"socket.io">>, <<"1">>, <<"xhr-polling">>, '...'], xhr_handler, []},
+			
+%% 			{['...'], cowboy_http_static,
+%% 			   [ {directory, {priv_dir, www, []}},
+%% 			       {mimetypes, [{<<".css">>, [<<"text/css">>]},
+%% 			                    {<<".html">>, [<<"text/html">>]}]
+%% 				   }
+%% 			   ]
+%% 			}
+%% 			{['...'], cowboy_http_static, [
+%% 			    {directory, priv()},
+%% 			    {mimetypes, [
+%% 			        {<<".html">>, [<<"text/html; charset=utf-8">>]},
+%% 			        {<<".css">>, [<<"text/css; charset=utf-8">>]},
+%% 			        {<<".js">>, [<<"application/x-javascript; charset=utf-8">>]},
+%% 			        {<<".jpg">>, [<<"image/jpeg">>]},
+%% 			        {<<".png">>, [<<"image/png">>]}
+%% 			    ]}
+%% 			]}
 			{['...'], cowboy_static_handler, [{path, <<"priv/www">>}]}
 		]}
 	],
-	cowboy:start_listener(my_http_listener, 1000,
-		cowboy_tcp_transport, [{port, 8080}],
+	cowboy:start_listener(my_http_listener, get_env(netpool_acceptors),
+		cowboy_tcp_transport, [{port, get_env(server_port)}],
 		cowboy_http_protocol, [{dispatch, Dispatch}]
 	),
+	
 	cowboy:start_listener(my_https_listener, 1000,
 		cowboy_ssl_transport, [
 			{port, 8443}, {certfile, "priv/ssl/cert.pem"},

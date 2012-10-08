@@ -64,7 +64,7 @@ get_sessions() ->
 get_nickname(Session) ->
 	case ets:lookup(?NickMap, Session) of
 		[] ->
-			undefined;
+			"undefined";
 		[{_, Value}] ->
 			Value
 	end.

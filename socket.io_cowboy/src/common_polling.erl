@@ -2,24 +2,14 @@
 %% @copyright 2012 yongboy <yong.boy@gmail.com>
 %% @doc socketio.
 
--module(xhr_polling).
--export([do_get/1, do_post/1, timeout_call/1, set_timeout/2, set_timeout/3, do_get_msg/1, do_post_msg/1]).
+-module(common_polling).
+-export([timeout_call/1, set_timeout/2, set_timeout/3, do_get_msg/1, do_post_msg/1]).
 -define(HEARBEAT_INTERVAL, socketio:get_env(heartbeat_interval)*1000).
 -define(HEARBEAT_TIMEOUT, socketio:get_env(heartbeat_timeout)*1000).
 
 %%
 %% API Functions
 %%
-%% @spec do_get({Session, Req}) -> void
-%% @doc server for do get method
-do_get({Session, Req}) ->
-	{T, _} = cowboy_http_req:qs_val(<<"t">>, Req),
-	Disconnected = case cowboy_http_req:qs_val(<<"disconnect">>, Req) of
-		{undefined, NewReg} -> false;
-		{_, NewReg} -> true
-	end,
-	Msg = do_get_msg({Session, Disconnected}),
-	cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], list_to_binary(Msg), NewReg).
 
 %% @spec do_get_msg({Session, Disconnected}) -> Msg
 %% @doc just export for htmlfile/jsonp module to call
@@ -31,21 +21,6 @@ do_get_msg({Session, Disconnected}) ->
 		_ ->
 			do_handle_get_msg({Session, Disconnected}, Room)
 	end.
-
-%% @spec do_post(Any) -> void
-%% @doc server for do post method
-do_post({Session, Req}) ->
-	Result = case cowboy_http_req:body(Req) of
-		{ok, Data, _} ->
-			Msg = binary_to_list(Data),
-			do_post_msg({Session, Msg});
-		{error, timeout} ->
-			io:format("got timeout now ~"),
-			"1"
-	end,		
-	cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain, charset=utf-8">>}], list_to_binary(Result), Req);
-do_post(_) ->
-	lager:debug("missing any thing at all now~n").
 
 %% @spec do_post_msg({Session,Msg}) -> Msg
 %% @doc just export for htmlfile/jsonp module to call
@@ -66,7 +41,6 @@ timeout_call({Room, Session}) ->
 	Room ! {self(), unsubscribe, Session};
 timeout_call({Room, Session, Endpoint, Type}) ->
 	Implement = map_server:lookup(Endpoint),
-	%% 	Room = session_queue:lookup(Session),
 	Implement:on_disconnect({Session, Endpoint, timeout}, fun(SendMsg, Others) ->
 				send_call({Session, Type, Endpoint}, SendMsg, Others)
 	end),
@@ -94,7 +68,7 @@ set_timeout(Room, Session, Timeout) ->
 	TimeRef = case timer:apply_after(Timeout, ?MODULE, timeout_call, [Args]) of
 		{ok, TRef} ->
 			TRef;
-		{error, Reason} ->
+		{error, _Reason} ->
 			undefined
 	end,
 	Room ! {self(), timeout, TimeRef}.
@@ -156,11 +130,11 @@ send_call({Session, Type, Endpoint}, SendMsg, self) ->
 
 send_call(_, _, []) ->
 	void;
-send_call({_, Type, Endpoint}, SendMsg, TargetSessiones = [H|T]) ->
+send_call({_, Type, Endpoint}, SendMsg, TargetSessiones = [_|_]) ->
 	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
 	lists:foreach(fun(TargetSession) -> 
 			Room = session_queue:lookup(TargetSession),
-			Result = pid_sent(Message, Room)
+			pid_sent(Message, Room)
 		end, TargetSessiones);
 
 send_call(_, _, {[], _}) ->
@@ -185,11 +159,8 @@ send_call({_, Type, Endpoint}, SendMsg, TargetSession) ->
 pid_sent(Msg, Pid) ->
 	case Pid of
 		undefined ->
-			lager:debug("Pid is undefined !"),
+			lager:error("Pid is undefined !"),
 			ok;
 		_ ->
 			Pid ! Msg
 	end.
-
-gen_output(String) ->
-	list_to_binary(String).

@@ -1,7 +1,8 @@
-%% Feel free to use, reuse and abuse the code in this file.
+%% @author yongboy <yong.boy@gmail.com>
+%% @copyright 2012 yongboy <yong.boy@gmail.com>
+%% @doc socketio.
 
 -module(websocket_handler).
--extends(xhr_polling).
 -behaviour(cowboy_http_handler).
 -behaviour(cowboy_http_websocket_handler).
 -export([init/3, handle/2, terminate/2]).
@@ -35,19 +36,18 @@ websocket_init(_Any, Req, []) ->
 	end,
 	{ok, Req, undefined, hibernate}.
 
-%% 处理来自客户端消息
+%% handle message from client
 websocket_handle({text, Data}, Req, State) ->
 	Session = get_session(Req),
 	Msg = binary_to_list(Data),
 
-	HandleMsg = ?BASE_MODULE:do_post_msg({Session, Msg}),
+	HandleMsg = common_polling:do_post_msg({Session, Msg}),
 	Room = session_queue:register(Session),
 	Room ! {self(), getEndpoint},
 	Endpoint = receive
 		{endpoint, TargetEndpoint} ->
 			TargetEndpoint
 	end,
-	%% TODO 去除掉"/chat"
 	Result = string:join(["5:", Endpoint, HandleMsg], ":"),
 	BinaryResult = list_to_binary(Result),
 	{reply, {text, BinaryResult}, Req, State, hibernate};
@@ -55,12 +55,11 @@ websocket_handle(_, Req, State) ->
 	lager:debug("has nothing to do here", []),
 	{ok, Req, State}.
 
-%% 处理来做进程的消息的推送
+%% handle message from process
 websocket_info({reply, first}, Req, State) ->
 	Session = get_session(Req),
 	Room = session_queue:lookup(Session),
 	timer:send_after(?HEARBEAT_INTERVAL, Room, {self(), post, "2::"}),
-	%%{ok, Req, State, hibernate};
 	{reply, {text, <<"1::">>}, Req, State, hibernate};
 websocket_info({reply, Msg}, Req, State) ->
 	{reply, {text, list_to_binary(Msg)}, Req, State, hibernate};

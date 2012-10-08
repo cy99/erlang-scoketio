@@ -1,5 +1,5 @@
 -module(jsonp_handler).
--extends(polling_handler).
+-extends(xhr_handler).
 -export([init/3, handle/2, info/3, terminate/2]).
 
 init({_Transport, http}, Req, _State) ->
@@ -11,7 +11,7 @@ handle(Req, Session) ->
 	OriMsg = binary_to_list(Binary),
 	Msg2 = string:substr(OriMsg, 2, string:len(OriMsg)-2),
 	Msg = re:replace(Msg2, "\\\\+", "", [global]),
-	Result = xhr_polling:do_post_msg({Session, Msg}),
+	Result = common_polling:do_post_msg({Session, Msg}),
 	{_, Req2} = cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain; charset=utf-8">>}], list_to_binary(Result), Req),
 	{ok, Req2, undefined_state}.
 
