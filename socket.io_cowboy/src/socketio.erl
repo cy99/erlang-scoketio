@@ -21,6 +21,7 @@ start(_Type, _Args) ->
 %% 			{['...'], cowboy_http_static, [{directory, {priv_dir, <<"priv/www">>, []}}]}
 			{[<<"socket.io">>, <<"1">>, <<"websocket">>, '...'], websocket_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"flashsocket">>, '...'], websocket_handler, []},
+			{[<<"socket.io">>, <<"1">>, <<"jsonp-polling">>, '...'], jsonp_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"xhr-polling">>, '...'], polling_handler, []},
 %% 			{[<<"socket.io">>, <<"1">>, '...'], transport_handler, []},
 			{[<<"socket.io">>, <<"1">>], transport_handler, []},

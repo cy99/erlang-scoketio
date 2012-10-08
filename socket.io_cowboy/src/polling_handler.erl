@@ -1,10 +1,6 @@
-%% Feel free to use, reuse and abuse the code in this file.
-
 -module(polling_handler).
--extends(xhr_polling).
 -behaviour(cowboy_http_handler).
 -export([init/3, handle/2, info/3, terminate/2]).
--define(TRANSPORTS, [{<<"xhr-polling">>, xhr_polling}, {<<"jsonp-polling">>, jsonp_polling}, {<<"htmlfile">>, htmlfile}]).
 -define(HEARBEAT_INTERVAL, socketio:get_env(heartbeat_interval)*1000).
 -define(HEARBEAT_TIMEOUT, socketio:get_env(heartbeat_timeout)*1000).
 
@@ -17,25 +13,24 @@ init({_Transport, http}, Req, _State) ->
 			{ok, Req2, Session};
 		'GET' ->
 			Room = session_queue:lookup(Session),
-			?BASE_MODULE:set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
+			xhr_polling:set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
 			Room ! {self(), subscribe, xhr_polling},
 			TimeoutRef = erlang:send_after(?HEARBEAT_INTERVAL, self(), timeout),
 			{loop, Req2, {Room, Session, TimeoutRef}, ?HEARBEAT_INTERVAL + 1000, hibernate}
 	end.
 
 %% POST/Short Request
-handle(Req, State) ->
-	Session = State,
+handle(Req, Session) ->
 	Result = case cowboy_http_req:body(Req) of
 		{ok, Data, Req2} ->
 			Msg = binary_to_list(Data),
-			?BASE_MODULE:do_post_msg({Session, Msg});
+			xhr_polling:do_post_msg({Session, Msg});
 		{error, timeout} ->
 			Req2 = Req,
 			"1"
 	end,
 	{_, Req3} = cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain; charset=utf-8">>}], list_to_binary(Result), Req2),
-	{ok, Req3, State}.
+	{ok, Req3, Session}.
 
 %% LONG POLLING
 info({reply, first}, Req, State) ->
