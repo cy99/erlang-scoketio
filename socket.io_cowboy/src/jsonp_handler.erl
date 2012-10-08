@@ -7,10 +7,12 @@ init({_Transport, http}, Req, _State) ->
 
 %% POST/Short Request
 handle(Req, Session) ->
+	%% TODO IE8下面发送的Unicode字符有待处理
 	Binary = list_to_binary(get_post_value(<<"d">>, Req)),
 	OriMsg = binary_to_list(Binary),
 	Msg2 = string:substr(OriMsg, 2, string:len(OriMsg)-2),
 	Msg = re:replace(Msg2, "\\\\+", "", [global]),
+	lager:debug("OriMsg:~s Msg2:~s Msg:~s", [OriMsg, Msg2, Msg]),
 	Result = common_polling:do_post_msg({Session, Msg}),
 	{_, Req2} = cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain; charset=utf-8">>}], list_to_binary(Result), Req),
 	{ok, Req2, undefined_state}.
