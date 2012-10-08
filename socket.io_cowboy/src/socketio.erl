@@ -22,7 +22,8 @@ start(_Type, _Args) ->
 			{[<<"socket.io">>, <<"1">>, <<"websocket">>, '...'], websocket_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"flashsocket">>, '...'], websocket_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"xhr-polling">>, '...'], polling_handler, []},
-			{[<<"socket.io">>, <<"1">>, '...'], transport_handler, []},
+%% 			{[<<"socket.io">>, <<"1">>, '...'], transport_handler, []},
+			{[<<"socket.io">>, <<"1">>], transport_handler, []},
 			{['...'], cowboy_static_handler, [{path, <<"priv/www">>}]}
 		]}
 	],
@@ -37,11 +38,14 @@ start(_Type, _Args) ->
 		cowboy_http_protocol, [{dispatch, Dispatch}]
 	),
 	
+	lager:start(),
 	uuid_server:start(),
 	map_server:start(),
 
 	%% register the demo implemention
-	map_server:register("/chat", chat_demo),
+	ImplName = "/chat",
+	map_server:register(ImplName, chat_impl),
+	chat_impl:on_init(ImplName),
 	
 	case get_env(flash_policy_port) of
 		undefined ->
@@ -50,7 +54,6 @@ start(_Type, _Args) ->
 			flash_security_server:start(Port)
 	end,
 	
-	lager:start(),
 	lager:set_loglevel(lager_console_backend, debug),
 %% 	lager:set_loglevel(lager_file_backend, "console.log", debug),
 	
