@@ -9,20 +9,20 @@ on_init(_Name) ->
 on_destroy(_Name) ->
 	void.
 
-on_connect({Session, _MessageId, _Endpoint, OriMessage}, _SendFn) ->
-	lager:debug("chat demo was called on_connect funtion with OriMsg : ~s and session id ~s ~n", [OriMessage, Session]).
+on_connect({SessionId, _MessageId, _Endpoint, OriMessage}, _SendFn) ->
+	lager:debug("chat demo was called on_connect funtion with OriMsg : ~s and session id ~s ~n", [OriMessage, SessionId]).
 
-on_disconnect({Session, _Endpoint, _SubMsgData}, SendFn) ->
-	Nickname = get_nickname(Session),
-	ets:delete(?NickMap, Session),
-	Sessions = get_sessions(),
+on_disconnect({SessionId, _Endpoint, _SubMsgData}, SendFn) ->
+	Nickname = get_nickname(SessionId),
+	ets:delete(?NickMap, SessionId),
+	SessionIds = get_sessions(),
 	Type = "5",
 	Announcement = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[\"~s\"]}", ["announcement", Nickname ++ " disconnected"])),
 	NicknameNotice = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[{~s}]}", ["nicknames", get_format_nicknames()])),
-	SendFn(Announcement, {Sessions, Type}),
-	SendFn(NicknameNotice, {Sessions, Type}).
+	SendFn(Announcement, {SessionIds, Type}),
+	SendFn(NicknameNotice, {SessionIds, Type}).
 
-on_message({Session, Type, MessageId, Endpoint, Message}, SendFn) ->
+on_message({SessionId, Type, MessageId, Endpoint, Message}, SendFn) ->
 	case string:len(MessageId) > 0  of
 		true ->
 			Ack = MessageId ++ "[false]",
@@ -31,38 +31,38 @@ on_message({Session, Type, MessageId, Endpoint, Message}, SendFn) ->
 	end,
 	{_, D} = mochijson2:decode(Message),
 	Key = proplists:get_value(<<"name">>, D),
-	handle_event_name(Key, D, {Session, Type, Endpoint, Message, SendFn}).
+	handle_event_name(Key, D, {SessionId, Type, Endpoint, Message, SendFn}).
 
 %%
 %% Local Functions
 %%
-handle_event_name(<<"nickname">>, Json, {Session, Type, _Endpoint, _Message, SendFn}) ->
+handle_event_name(<<"nickname">>, Json, {SessionId, Type, _Endpoint, _Message, SendFn}) ->
 	[NicknameBinary] = proplists:get_value(<<"args">>, Json),
 	NickNameStr = lists:flatten(binary_to_list(NicknameBinary)),
-	ets:insert(chat_tab, {Session, NickNameStr}),
+	ets:insert(chat_tab, {SessionId, NickNameStr}),
 	Welcome = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[\"~s\"]}", ["announcement", NickNameStr ++ " connected"])),
-	Sessions = get_sessions(),
-	SendFn(Welcome, {Sessions, Type}),
+	SessionIds = get_sessions(),
+	SendFn(Welcome, {SessionIds, Type}),
 	NicknameNotice = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[{~s}]}", ["nicknames", get_format_nicknames()])),
-	SendFn(NicknameNotice, Sessions);
+	SendFn(NicknameNotice, SessionIds);
 
-handle_event_name(<<"user message">>, Json, {Session, _Type, _Endpoint, _Message, SendFn}) ->
+handle_event_name(<<"user message">>, Json, {SessionId, _Type, _Endpoint, _Message, SendFn}) ->
 	[MessageBinary] = proplists:get_value(<<"args">>, Json),
 	MsgTxtStr = lists:flatten(binary_to_list(MessageBinary)),
 
-	Nickname = get_nickname(Session),
-	Sessions = get_sessions(),	
+	Nickname = get_nickname(SessionId),
+	SessionIds = get_sessions(),	
 	JsonMessage = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[\"~s\",\"~s\"]}", ["user message", Nickname, MsgTxtStr])),
-	SendFn(JsonMessage, lists:delete(Session, Sessions));
-handle_event_name(<<_>>, _Json, {_Session, _Type, _Endpoint, Message, SendFn}) ->
+	SendFn(JsonMessage, lists:delete(SessionId, SessionIds));
+handle_event_name(<<_>>, _Json, {_SessionId, _Type, _Endpoint, Message, SendFn}) ->
 	SendFn(Message, self).
 
 get_sessions() ->
-		ets:foldl(fun({OneSession, _}, Arrs) ->
-					[OneSession|Arrs]
+		ets:foldl(fun({OneSessionId, _}, Arrs) ->
+					[OneSessionId|Arrs]
 				end, [], ?NickMap).
-get_nickname(Session) ->
-	case ets:lookup(?NickMap, Session) of
+get_nickname(SessionId) ->
+	case ets:lookup(?NickMap, SessionId) of
 		[] ->
 			"undefined";
 		[{_, Value}] ->

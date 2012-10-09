@@ -3,7 +3,7 @@
 %% @doc socketio.
 
 -module(common_polling).
--export([timeout_call/1, set_timeout/2, set_timeout/3, do_get_msg/1, do_post_msg/1]).
+-export([timeout_call/1, set_timeout/1, set_timeout/2, do_post_msg/1]).
 -define(HEARBEAT_INTERVAL, socketio:get_env(heartbeat_interval)*1000).
 -define(HEARBEAT_TIMEOUT, socketio:get_env(heartbeat_timeout)*1000).
 
@@ -11,59 +11,44 @@
 %% API Functions
 %%
 
-%% @spec do_get_msg({Session, Disconnected}) -> Msg
+%% @spec do_post_msg({SessionId,Msg}) -> Msg
 %% @doc just export for htmlfile/jsonp module to call
-do_get_msg({Session, Disconnected}) ->
-	Room = session_queue:register(Session),
-	case Room of
-		undefined ->
-			"7:::[\"Request Invalide\"]+[\"Please do not do that!\"]";
-		_ ->
-			do_handle_get_msg({Session, Disconnected}, Room)
-	end.
-
-%% @spec do_post_msg({Session,Msg}) -> Msg
-%% @doc just export for htmlfile/jsonp module to call
-do_post_msg({Session,Msg}) ->
+do_post_msg({SessionId, Msg}) ->
 	{[Type, MessageId, Endpoint, SubMsgData]} = socketio_decode:decode(Msg),
-	Room = session_queue:lookup(Session),
-	case Room of
-		undefined ->
-			"7::" ++ Endpoint ++ ":[\"Request Invalide\"]+[\"Please do not do that!\"]";
-		_ ->
-			do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room),
-			"1"
-	end.
+%% 	Room = session_queue:lookup(SessionId),
+%% 	case Room of
+%% 		undefined ->
+%% 			"7::" ++ Endpoint ++ ":[\"Request Invalide\"]+[\"Please do not do that!\"]";
+%% 		_ ->
+		do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {SessionId, Msg}),
+		"1".
+%% 	end.
 
 %% @spec timeout_call(Any) -> void
 %% @doc timeout call
-timeout_call({Room, Session}) ->
-	Room ! {self(), unsubscribe, Session};
-timeout_call({Room, Session, Endpoint, Type}) ->
+timeout_call({SessionId}) ->
+	session_server:unregister(SessionId);
+timeout_call({SessionId, Endpoint, Type}) ->
 	Implement = map_server:lookup(Endpoint),
-	Implement:on_disconnect({Session, Endpoint, timeout}, fun(SendMsg, Others) ->
-				send_call({Session, Type, Endpoint}, SendMsg, Others)
+	Implement:on_disconnect({SessionId, Endpoint, timeout}, fun(SendMsg, Others) ->
+				send_call({SessionId, Type, Endpoint}, SendMsg, Others)
 	end),
-	Room ! {self(), unsubscribe, Session}.
+	session_server:unregister(SessionId).
 
-%% @spec set_timeout(Room, Session) -> void
+%% @spec set_timeout(SessionId) -> void
 %% @doc set timer execute one time with default ?HEARBEAT_TIMEOUT
-set_timeout(Room, Session) ->
-	set_timeout(Room, Session, ?HEARBEAT_TIMEOUT).
+set_timeout(SessionId) ->
+	set_timeout(SessionId, ?HEARBEAT_TIMEOUT).
 
-%% @spec set_timeout(Room, Session, Timeout) -> void
+%% @spec set_timeout(SessionId, Timeout) -> void
 %% @doc set timer execute one time
-set_timeout(Room, Session, Timeout) ->
-	Room ! {self(), getEndpoint},
-	Endpoint = receive
-		{endpoint, TargetEndpoint} ->
-			TargetEndpoint
-	end,
+set_timeout(SessionId, Timeout) ->
+	Endpoint = session_server:call({SessionId, getEndpoint}),
 	Args = case Endpoint of
 		undefined ->
-			{Room, Session};
+			{SessionId};
 		_ ->
-			{Room, Session, Endpoint, "5"}
+			{SessionId, Endpoint, "5"}
 	end,
 	TimeRef = case timer:apply_after(Timeout, ?MODULE, timeout_call, [Args]) of
 		{ok, TRef} ->
@@ -71,96 +56,65 @@ set_timeout(Room, Session, Timeout) ->
 		{error, _Reason} ->
 			undefined
 	end,
-	Room ! {self(), timeout, TimeRef}.
+	session_server:cast({SessionId, timeout, TimeRef}).
 
 %%
 %% Local Functions
 %%
-do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {Session,Msg}, Room) ->
+do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {SessionId, Msg}) ->
 	Implement = map_server:lookup(Endpoint),
 	case Type of
 		"0" ->
-			Implement:on_disconnect({Session, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
-				send_call({Session, Type, Endpoint}, SendMsg, Others)
+			Implement:on_disconnect({SessionId, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
+				send_call({SessionId, Type, Endpoint}, SendMsg, Others)
 			end),
-			Room ! {self(), unsubscribe, Session};
+			session_server:unregister(SessionId);
 		"1" ->
-			Room ! {self(), endpoint, Endpoint},
-			Room ! {self(), post, Msg},
-			Implement:on_connect({Session, MessageId, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
-				send_call({Session, Type, Endpoint}, SendMsg, Others)
+			session_server:cast({SessionId, endpoint, Endpoint}),
+			session_server:cast({SessionId, self(), post, Msg}),
+			Implement:on_connect({SessionId, MessageId, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
+				send_call({SessionId, Type, Endpoint}, SendMsg, Others)
 			end);
 		"2" ->
-			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
-			timer:send_after(?HEARBEAT_INTERVAL, Room, {self(), post, "2::"});
+			set_timeout(SessionId, ?HEARBEAT_TIMEOUT),
+%% 			timer:send_after(?HEARBEAT_INTERVAL, Room, {self(), post, "2::"}); %% TODO 
+			timer:apply_after(?HEARBEAT_INTERVAL, session_server, cast, [{SessionId, self(), post, "2::"}]);
 		"5" ->
-			Implement:on_message({Session, Type, MessageId, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
-				send_call({Session, Type, Endpoint}, SendMsg, Others)
+			Implement:on_message({SessionId, Type, MessageId, Endpoint, SubMsgData}, fun(SendMsg, Others) ->
+				send_call({SessionId, Type, Endpoint}, SendMsg, Others)
 			end)
 	end.
 
-do_handle_get_msg({Session, Disconnected}, Room) ->
-	case Disconnected of
-		true ->
-			set_timeout(Room, Session, 1),
-			"";
-		false ->
-			set_timeout(Room, Session, ?HEARBEAT_TIMEOUT),
-			Room ! {self(), subscribe, ?MODULE},
-			Msg = receive
-					first ->
-						"1::";
-					Message ->
-						Message
-				after ?HEARBEAT_INTERVAL ->
-						"8::"
-				end,
-			Room ! {self(), end_connect},
-			Msg
-	end.
-
-send_call({Session, _, Endpoint}, SendMsg, ack) ->
-	Room = session_queue:lookup(Session),
-	Message = {self(), post, string:join(["6", "", Endpoint, SendMsg], ":")},
-	pid_sent(Message, Room);
-send_call({Session, Type, Endpoint}, SendMsg, self) ->
-	Room = session_queue:lookup(Session),
-	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
-	pid_sent(Message, Room);
+send_call({SessionId, _, Endpoint}, SendMsg, ack) ->
+	Message = {SessionId, self(), post, string:join(["6", "", Endpoint, SendMsg], ":")},
+	send_message(Message);
+send_call({SessionId, Type, Endpoint}, SendMsg, self) ->
+	Message = {SessionId, self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
+	send_message(Message);
 
 send_call(_, _, []) ->
 	void;
-send_call({_, Type, Endpoint}, SendMsg, TargetSessiones = [_|_]) ->
-	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
-	lists:foreach(fun(TargetSession) -> 
-			Room = session_queue:lookup(TargetSession),
-			pid_sent(Message, Room)
-		end, TargetSessiones);
+send_call({_, Type, Endpoint}, SendMsg, TargetSessionIdes = [_|_]) ->
+	lists:foreach(fun(TargetSessionId) -> 
+			Message = {TargetSessionId, self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
+			send_message(Message)
+		end, TargetSessionIdes);
 
 send_call(_, _, {[], _}) ->
 	void;
-send_call({_, _, Endpoint}, SendMsg, {TargetSessions=[_|_], MessageType}) ->
-	Message = {self(), post, string:join([MessageType, "", Endpoint, SendMsg], ":")},
-	lists:foreach(fun(TargetSession) ->
-						  Room = session_queue:lookup(TargetSession),
-						  pid_sent(Message, Room)
-				  end, TargetSessions);
+send_call({_, _, Endpoint}, SendMsg, {TargetSessionIds=[_|_], MessageType}) ->
+	lists:foreach(fun(TargetSessionId) ->
+						Message = {TargetSessionId, self(), post, string:join([MessageType, "", Endpoint, SendMsg], ":")},
+						send_message(Message)
+				  end, TargetSessionIds);
 
-send_call({_, _, Endpoint}, SendMsg, {TargetSession, MessageType}) ->
-	Room = session_queue:lookup(TargetSession),
-	Message = {self(), post, string:join([MessageType, "", Endpoint, SendMsg], ":")},
-	pid_sent(Message, Room);
+send_call({_, _, Endpoint}, SendMsg, {TargetSessionId, MessageType}) ->
+	Message = {TargetSessionId, self(), post, string:join([MessageType, "", Endpoint, SendMsg], ":")},
+	send_message(Message);
 
-send_call({_, Type, Endpoint}, SendMsg, TargetSession) ->
-	Room = session_queue:lookup(TargetSession),
-	Message = {self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
-	pid_sent(Message, Room).
+send_call({_, Type, Endpoint}, SendMsg, TargetSessionId) ->
+	Message = {TargetSessionId, self(), post, string:join([Type, "", Endpoint, SendMsg], ":")},
+	send_message(Message).
 
-pid_sent(Msg, Pid) ->
-	case Pid of
-		undefined ->
-			lager:error("Pid is undefined !"),
-			ok;
-		_ ->
-			Pid ! Msg
-	end.
+send_message(Message) ->
+	session_server:cast(Message).

@@ -23,6 +23,8 @@ start(_Type, _Args) ->
 			{[<<"socket.io">>, <<"1">>, <<"jsonp-polling">>, '...'], jsonp_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"xhr-polling">>, '...'], xhr_handler, []},
 			{['...'], cowboy_http_static, [
+					%% TODO NOTE 若修改了当前程序所在目录，则需要修改
+					%% {directory, {priv_dir, 目录名, [<<"www">>]}},
                     {directory, {priv_dir, ?MODULE, [<<"www">>]}},
                     {mimetypes, [
                         {<<".htm">>, [<<"text/html">>]},
@@ -53,7 +55,7 @@ start(_Type, _Args) ->
 	
 	uuid_server:start(),
 	map_server:start(),
-
+	session_server:start(),
 	
 	case get_env(flash_policy_port) of
 		undefined ->

@@ -6,13 +6,13 @@ init({_Transport, http}, Req, _State) ->
 	?BASE_MODULE:init({_Transport, http}, Req, _State).
 
 %% POST/Short Request
-handle(Req, Session) ->
+handle(Req, SessionId) ->
 	%% TODO IE8下面发送的Unicode字符有待处理
 	Binary = list_to_binary(get_post_value(<<"d">>, Req)),
 	OriMsg = binary_to_list(Binary),
 	Msg2 = string:substr(OriMsg, 2, string:len(OriMsg)-2),
 	Msg = re:replace(Msg2, "\\\\+", "", [global]),
-	Result = common_polling:do_post_msg({Session, Msg}),
+	Result = common_polling:do_post_msg({SessionId, Msg}),
 	{_, Req2} = cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain; charset=utf-8">>}], list_to_binary(Result), Req),
 	{ok, Req2, undefined_state}.
 
@@ -33,9 +33,9 @@ terminate(_Req, _State) ->
 %%
 %% Local Functions
 %%
-output(Message, Req, _State = {Room, _Session, TimeoutRef}) ->
+output(Message, Req, _State = {Room, SessionId, TimeoutRef}) ->
 	{I, Req1} = cowboy_http_req:qs_val(<<"i">>, Req),
-	Room ! {self(), end_connect},
+	session_server:cast({SessionId, end_connect}),
 	erlang:cancel_timer(TimeoutRef),
 	DescList = io_lib:format("io.j[~s]('~s');", [I, Message]),
 	{ok, Req2} = cowboy_http_req:reply(200, [

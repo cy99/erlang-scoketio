@@ -41,20 +41,20 @@ lookup(Endpoint) ->
 	gen_server:call(?MODULE, {lookup, Endpoint}).
 
 %% session
-%% @spec add_session_pid(Session, Pid) -> true
-%% @doc insert into the truple {Session, Pid}
-add_session_pid(Session, Pid) ->
-	gen_server:call(?MODULE, {add_session_pid, Session, Pid}).
+%% @spec add_session_pid(SessionId, Pid) -> true
+%% @doc insert into the truple {SessionId, Pid}
+add_session_pid(SessionId, Pid) ->
+	gen_server:call(?MODULE, {add_session_pid, SessionId, Pid}).
 
-%% @spec lookup_pid(Session) -> Pid | undefined
-%% @spec look up the Pid by Session
-lookup_pid(Session) ->
-	gen_server:call(?MODULE, {lookup_session_pid, Session}).
+%% @spec lookup_pid(SessionId) -> Pid | undefined
+%% @spec look up the Pid by SessionId
+lookup_pid(SessionId) ->
+	gen_server:call(?MODULE, {lookup_session_pid, SessionId}).
 
-%% @spec delete_pid(Session) -> true
-%% @doc delete truple {Session, Pid} by Session
-delete_pid(Session) ->
-	gen_server:call(?MODULE, {delete_session_pid, Session}).
+%% @spec delete_pid(SessionId) -> true
+%% @doc delete truple {SessionId, Pid} by SessionId
+delete_pid(SessionId) ->
+	gen_server:call(?MODULE, {delete_session_pid, SessionId}).
 
 %% ====================================================================
 %% Server functions
@@ -103,12 +103,12 @@ handle_call({unregister, Endpoint}, From, State) ->
     {reply, Reply, State};
 
 
-handle_call({add_session_pid, Session, Pid}, From, State) ->
-	Reply = ets:insert(State#state.session, {Session, Pid}),	
+handle_call({add_session_pid, SessionId, Pid}, From, State) ->
+	Reply = ets:insert(State#state.session, {SessionId, Pid}),	
     {reply, Reply, State};
 
-handle_call({lookup_session_pid, Session}, From, State) ->
-	Result = ets:lookup(State#state.session, Session),
+handle_call({lookup_session_pid, SessionId}, From, State) ->
+	Result = ets:lookup(State#state.session, SessionId),
 	case Result of
 		[{Key, Reply}] ->
 			Reply;
@@ -117,8 +117,8 @@ handle_call({lookup_session_pid, Session}, From, State) ->
 	end,
     {reply, Reply, State};
 
-handle_call({delete_session_pid, Session}, From, State) ->
-	Reply = ets:delete(State#state.session, Session),
+handle_call({delete_session_pid, SessionId}, From, State) ->
+	Reply = ets:delete(State#state.session, SessionId),
     {reply, Reply, State};
 
 handle_call(_, From, State) ->

@@ -27,10 +27,10 @@ do_post([], Req) ->
 	cowboy_http_req:reply(404, Req).
 
 do_request([<<"socket.io">>, <<"1">>], Req) ->
-	UUID = uuid_server:gen(),
-	Room = session_queue:register(UUID),
-	common_polling:set_timeout(Room, UUID),
-	Msg = io_lib:format("~s:~p:~p:~s", [UUID, socketio:get_env(heartbeat_timeout), socketio:get_env(close_timeout), socketio:get_env(allow_transports)]),
+	SessionId = uuid_server:gen(),
+	session_server:register(SessionId),
+	common_polling:set_timeout(SessionId),
+	Msg = io_lib:format("~s:~p:~p:~s", [SessionId, socketio:get_env(heartbeat_timeout), socketio:get_env(close_timeout), socketio:get_env(allow_transports)]),
 	OutputVal = list_to_binary(Msg),
 	cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain; charset=utf-8">>}], OutputVal, Req);
 

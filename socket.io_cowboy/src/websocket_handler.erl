@@ -26,28 +26,17 @@ terminate(_Req, _State) ->
 
 websocket_init(_Any, Req, []) ->
 %% 	Req2 = cowboy_http_req:compact(Req),
-	Session = get_session(Req),
-	case session_queue:lookup(Session) of
-		undefined ->
-			lager:debug("does not got room now"),
-			void;
-		Room ->
-			Room ! {self(), subscribe, websocket}
-	end,
+	SessionId = get_session(Req),
+	session_server:cast({SessionId, self(), subscribe, websocket}),
 	{ok, Req, undefined, hibernate}.
 
 %% handle message from client
 websocket_handle({text, Data}, Req, State) ->
-	Session = get_session(Req),
+	SessionId = get_session(Req),
 	Msg = binary_to_list(Data),
 
-	HandleMsg = common_polling:do_post_msg({Session, Msg}),
-	Room = session_queue:register(Session),
-	Room ! {self(), getEndpoint},
-	Endpoint = receive
-		{endpoint, TargetEndpoint} ->
-			TargetEndpoint
-	end,
+	HandleMsg = common_polling:do_post_msg({SessionId, Msg}),
+	Endpoint = session_server:call({SessionId, getEndpoint}),
 	Result = string:join(["5:", Endpoint, HandleMsg], ":"),
 	BinaryResult = list_to_binary(Result),
 	{reply, {text, BinaryResult}, Req, State, hibernate};
@@ -57,9 +46,8 @@ websocket_handle(_, Req, State) ->
 
 %% handle message from process
 websocket_info({reply, first}, Req, State) ->
-	Session = get_session(Req),
-	Room = session_queue:lookup(Session),
-	timer:send_after(?HEARBEAT_INTERVAL, Room, {self(), post, "2::"}),
+	SessionId = get_session(Req),
+	timer:apply_after(?HEARBEAT_INTERVAL, session_server, cast, [{SessionId, self(), post, "2::"}]),
 	{reply, {text, <<"1::">>}, Req, State, hibernate};
 websocket_info({reply, Msg}, Req, State) ->
 	{reply, {text, list_to_binary(Msg)}, Req, State, hibernate};
@@ -71,5 +59,5 @@ websocket_terminate(_Reason, _Req, _State) ->
 	ok.
 
 get_session(Req) ->
-	{[_, _, _, Session], _} = cowboy_http_req:path(Req),
-	binary_to_list(Session).
+	{[_, _, _, SessionId], _} = cowboy_http_req:path(Req),
+	binary_to_list(SessionId).

@@ -54,7 +54,7 @@ init([]) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_call({Gen}, From, State) ->
-    Reply = uuid:gen(),
+    Reply = uuid:to_string(uuid:v4()),
     {reply, Reply, State}.
 
 %% --------------------------------------------------------------------
