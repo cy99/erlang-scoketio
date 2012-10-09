@@ -55,8 +55,6 @@ start(_Type, _Args) ->
 		cowboy_http_protocol, [{dispatch, Dispatch}]
 	),
 	
-%% 	lager:start(),
-	
 	uuid_server:start(),
 	map_server:start(),
 
@@ -71,20 +69,19 @@ start(_Type, _Args) ->
 		Port ->
 			cowboy:start_listener(dp_listener, 100,
               cowboy_tcp_transport, [{port, Port}],
-              dp_proto_handler, []
+              flash_security_handler, []
             )
-%% 			flash_security_server:start(Port)
 	end,
 	
-%% 	lager:set_loglevel(lager_console_backend, debug),
-%% 	lager:set_loglevel(lager_file_backend, "console.log", debug),
+	lager:set_loglevel(lager_console_backend, debug),
+	lager:set_loglevel(lager_file_backend, "console.log", debug),
 	
 	socketio_sup:start_link().
 
 stop(_State) ->
 	ok.
 
-%% @spec get_env(Key) -> {ok, Value} | undefined
+%% @spec get_env(Key) -> Value | undefined
 %% @doc get env value
 get_env(Key) ->
 	case application:get_env(?MODULE, Key) of
