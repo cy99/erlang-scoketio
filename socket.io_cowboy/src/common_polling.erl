@@ -28,7 +28,7 @@ do_post_msg({SessionId, Msg}) ->
 timeout_call({SessionId}) ->
 	session_server:unregister(SessionId);
 timeout_call({SessionId, Endpoint, Type}) ->
-	Implement = map_server:lookup(Endpoint),
+	Implement = endpoint_server:lookup(Endpoint),
 	Implement:on_disconnect({SessionId, Endpoint, timeout}, fun(SendMsg, Others) ->
 				send_call({SessionId, Type, Endpoint}, SendMsg, Others)
 	end),
@@ -61,7 +61,7 @@ set_timeout(SessionId, Timeout) ->
 %% Local Functions
 %%
 do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {SessionId, Msg}) ->
-	Implement = map_server:lookup(Endpoint),
+	Implement = endpoint_server:lookup(Endpoint),
 	case Type of
 		"0" ->
 			Implement:on_disconnect({SessionId, Endpoint, SubMsgData}, fun(SendMsg, Others) ->

@@ -1,7 +1,7 @@
 %% @author yongboy <yong.boy@gmail.com>
 %% @copyright 2012 yongboy <yong.boy@gmail.com>
 %% @doc socketio.
--module(map_server).
+-module(endpoint_server).
 
 -behaviour(gen_server).
 %% --------------------------------------------------------------------
@@ -83,25 +83,6 @@ handle_call({lookup, Endpoint}, From, State) ->
 
 handle_call({unregister, Endpoint}, From, State) ->
 	Reply = ets:delete(State#state.endpoint, Endpoint),
-    {reply, Reply, State};
-
-
-handle_call({add_session_pid, SessionId, Pid}, From, State) ->
-	Reply = ets:insert(State#state.session, {SessionId, Pid}),	
-    {reply, Reply, State};
-
-handle_call({lookup_session_pid, SessionId}, From, State) ->
-	Result = ets:lookup(State#state.session, SessionId),
-	case Result of
-		[{Key, Reply}] ->
-			Reply;
-		[] ->
-			 Reply = undefined
-	end,
-    {reply, Reply, State};
-
-handle_call({delete_session_pid, SessionId}, From, State) ->
-	Reply = ets:delete(State#state.session, SessionId),
     {reply, Reply, State};
 
 handle_call(_, From, State) ->

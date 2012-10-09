@@ -54,7 +54,7 @@ start(_Type, _Args) ->
 	),
 	
 	uuid_server:start(),
-	map_server:start(),
+	endpoint_server:start(),
 	session_server:start(),
 	
 	case get_env(flash_policy_port) of
@@ -74,7 +74,7 @@ start(_Type, _Args) ->
 	%% add your implemention here ...
 	%% register the demo implemention
 	ImplName = "/chat",
-	map_server:register(ImplName, chat_impl),
+	endpoint_server:register(ImplName, chat_impl),
 	chat_impl:on_init(ImplName),
 
 	socketio_sup:start_link().
