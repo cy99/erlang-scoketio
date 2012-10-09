@@ -15,14 +15,13 @@
 %% @doc just export for htmlfile/jsonp module to call
 do_post_msg({SessionId, Msg}) ->
 	{[Type, MessageId, Endpoint, SubMsgData]} = socketio_decode:decode(Msg),
-%% 	Room = session_queue:lookup(SessionId),
-%% 	case Room of
-%% 		undefined ->
-%% 			"7::" ++ Endpoint ++ ":[\"Request Invalide\"]+[\"Please do not do that!\"]";
-%% 		_ ->
-		do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {SessionId, Msg}),
-		"1".
-%% 	end.
+	case session_server:check(SessionId) of
+		false ->
+			string:join(["7:", Endpoint, "[\"Request Invalide\"]+[\"Please do not do that!\"]"], ":");
+		true ->
+			do_handle_post_msg({Type, MessageId, Endpoint, SubMsgData}, {SessionId, Msg}),
+			"1"
+	end.
 
 %% @spec timeout_call(Any) -> void
 %% @doc timeout call

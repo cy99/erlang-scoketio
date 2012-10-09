@@ -11,7 +11,6 @@
 %% --------------------------------------------------------------------
 %% External exports
 -export([start/0]).
--export([add_session_pid/2, lookup_pid/1, delete_pid/1]).
 -export([register/2, unregister/1, lookup/1]).
 
 %% gen_server callbacks
@@ -39,22 +38,6 @@ unregister(Endpoint) ->
 %% @doc look up the endpoint's implemention, if found not, return none
 lookup(Endpoint) ->
 	gen_server:call(?MODULE, {lookup, Endpoint}).
-
-%% session
-%% @spec add_session_pid(SessionId, Pid) -> true
-%% @doc insert into the truple {SessionId, Pid}
-add_session_pid(SessionId, Pid) ->
-	gen_server:call(?MODULE, {add_session_pid, SessionId, Pid}).
-
-%% @spec lookup_pid(SessionId) -> Pid | undefined
-%% @spec look up the Pid by SessionId
-lookup_pid(SessionId) ->
-	gen_server:call(?MODULE, {lookup_session_pid, SessionId}).
-
-%% @spec delete_pid(SessionId) -> true
-%% @doc delete truple {SessionId, Pid} by SessionId
-delete_pid(SessionId) ->
-	gen_server:call(?MODULE, {delete_session_pid, SessionId}).
 
 %% ====================================================================
 %% Server functions

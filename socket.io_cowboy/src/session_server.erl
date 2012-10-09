@@ -15,7 +15,7 @@
 %% External exports
 -export([start/0]).
 -export([call/1, cast/1]).
--export([register/1, unregister/1]).
+-export([register/1, unregister/1, check/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -34,6 +34,9 @@ register(SessionId) ->
 	gen_server:cast(?MODULE, {register, SessionId}).
 unregister(SessionId) ->
 	gen_server:cast(?MODULE, {unregister, SessionId}).
+
+check(SessionId) ->
+	gen_server:call(?MODULE, {lookup, SessionId}).
 
 call(Request) ->
 	gen_server:call(?MODULE, Request).
@@ -71,8 +74,11 @@ handle_call({SessionId, getEndpoint}, _From, _State) ->
 	Session = get_session(SessionId),
     Reply = Session#session.endpoint,
     {reply, Reply, _State};
-handle_call(Msg, _From, _State) ->
-    Reply = ok,
+handle_call({lookup, SessionId}, _From, _State) ->
+	Reply = case ets:lookup(?NickMap, SessionId) of
+		[] -> false;
+		[_] -> true
+	end,
     {reply, Reply, _State};
 handle_call(Msg, _From, _State) ->
     Reply = ok,
