@@ -13,7 +13,6 @@
 -export([start/0]).
 -export([add_session_pid/2, lookup_pid/1, delete_pid/1]).
 -export([register/2, unregister/1, lookup/1]).
--export([get_env/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -25,16 +24,6 @@
 %% ====================================================================
 start() ->
 	gen_server:start({local, ?MODULE}, ?MODULE, [], []).
-
-%% @spec get_env(Key) -> {ok, Value} | undefined
-%% @doc get env value
-get_env(Key) ->
-	case application:get_env(Key) of
-		{ok, Value} ->
-			Value;		
-		undefined ->
-			undefined
-	end.
 
 %% endpoint
 %% @spec register(Endpoint, Implement) -> Boolean

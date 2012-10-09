@@ -22,25 +22,21 @@ start(_Type, _Args) ->
 			{[<<"socket.io">>, <<"1">>, <<"htmlfile">>, '...'], htmlfile_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"jsonp-polling">>, '...'], jsonp_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"xhr-polling">>, '...'], xhr_handler, []},
-			
-%% 			{['...'], cowboy_http_static,
-%% 			   [ {directory, {priv_dir, www, []}},
-%% 			       {mimetypes, [{<<".css">>, [<<"text/css">>]},
-%% 			                    {<<".html">>, [<<"text/html">>]}]
-%% 				   }
-%% 			   ]
-%% 			}
-%% 			{['...'], cowboy_http_static, [
-%% 			    {directory, priv()},
-%% 			    {mimetypes, [
-%% 			        {<<".html">>, [<<"text/html; charset=utf-8">>]},
-%% 			        {<<".css">>, [<<"text/css; charset=utf-8">>]},
-%% 			        {<<".js">>, [<<"application/x-javascript; charset=utf-8">>]},
-%% 			        {<<".jpg">>, [<<"image/jpeg">>]},
-%% 			        {<<".png">>, [<<"image/png">>]}
-%% 			    ]}
-%% 			]}
-			{['...'], cowboy_static_handler, [{path, <<"priv/www">>}]}
+			{['...'], cowboy_http_static, [
+                    {directory, {priv_dir, ?MODULE, [<<"www">>]}},
+                    {mimetypes, [
+                        {<<".htm">>, [<<"text/html">>]},
+                        {<<".html">>, [<<"text/html">>]},
+                        {<<".css">>, [<<"text/css">>]},
+                        {<<".js">>, [<<"application/x-javascript">>]},
+                        {<<".jpeg">>, [<<"image/jpeg">>]},
+                        {<<".jpg">>, [<<"image/jpeg">>]},
+                        {<<".ico">>, [<<"image/x-icon">>]},
+                        {<<".gif">>, [<<"image/gif">>]},
+                        {<<".png">>, [<<"image/png">>]},
+                        {<<".swf">>, [<<"application/x-shockwave-flash">>]}
+                    ]}
+                ]}
 		]}
 	],
 	cowboy:start_listener(my_http_listener, get_env(netpool_acceptors),
@@ -58,10 +54,6 @@ start(_Type, _Args) ->
 	uuid_server:start(),
 	map_server:start(),
 
-	%% register the demo implemention
-	ImplName = "/chat",
-	map_server:register(ImplName, chat_impl),
-	chat_impl:on_init(ImplName),
 	
 	case get_env(flash_policy_port) of
 		undefined ->
@@ -73,9 +65,16 @@ start(_Type, _Args) ->
             )
 	end,
 	
+	lager:start(),
 	lager:set_loglevel(lager_console_backend, debug),
-	lager:set_loglevel(lager_file_backend, "console.log", debug),
+%% 	lager:set_loglevel(lager_file_backend, "console.log", debug),
 	
+	%% add your implemention here ...
+	%% register the demo implemention
+	ImplName = "/chat",
+	map_server:register(ImplName, chat_impl),
+	chat_impl:on_init(ImplName),
+
 	socketio_sup:start_link().
 
 stop(_State) ->
