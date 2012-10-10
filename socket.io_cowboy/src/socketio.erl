@@ -22,6 +22,14 @@ start(_Type, _Args) ->
 			{[<<"socket.io">>, <<"1">>, <<"htmlfile">>, '...'], htmlfile_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"jsonp-polling">>, '...'], jsonp_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"xhr-polling">>, '...'], xhr_handler, []},
+			%% just server socket.io's static files, eg: socket.io.js, WebSocketMain.swf, WebSocketMainInsecure.swf
+			{[<<"socket.io">>, <<"static">>, '...'], cowboy_http_static, [
+                    {directory, {priv_dir, ?MODULE, [<<"static">>]}},
+                    {mimetypes, [
+                        {<<".js">>, [<<"application/x-javascript">>]},
+                        {<<".swf">>, [<<"application/x-shockwave-flash">>]}
+                    ]}
+             ]},
 			{['...'], cowboy_http_static, [
                     {directory, {priv_dir, ?MODULE, [<<"www">>]}},
                     {mimetypes, [
@@ -36,7 +44,7 @@ start(_Type, _Args) ->
                         {<<".png">>, [<<"image/png">>]},
                         {<<".swf">>, [<<"application/x-shockwave-flash">>]}
                     ]}
-                ]}
+             ]}
 		]}
 	],
 	cowboy:start_listener(my_http_listener, get_env(netpool_acceptors),
