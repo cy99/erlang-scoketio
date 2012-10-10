@@ -44,6 +44,7 @@ start(_Type, _Args) ->
 		cowboy_http_protocol, [{dispatch, Dispatch}]
 	),
 	
+	lager:start(),
 	uuid_server:start(),
 	endpoint_server:start(),
 	session_server:start(),
@@ -57,10 +58,6 @@ start(_Type, _Args) ->
               flash_security_handler, []
             )
 	end,
-	
-	lager:start(),
-	lager:set_loglevel(lager_console_backend, debug),
-%% 	lager:set_loglevel(lager_file_backend, "console.log", debug),
 	
 	%% add your implemention here ...
 	%% register the demo implemention
