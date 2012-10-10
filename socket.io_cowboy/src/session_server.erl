@@ -21,7 +21,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -record(session, {subscribed = false, messages = [], defined, timeRef, endpoint, transport}).
--define(NickMap, session_tab).
+-define(SESSION_TAB, session_tab).
 -record(state, {}).
 
 %% ====================================================================
@@ -57,7 +57,7 @@ cast(Request) ->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-	ets:new(?NickMap, [set, public, named_table, {write_concurrency, true}, {read_concurrency, true}]),
+	ets:new(?SESSION_TAB, [set, public, named_table, {write_concurrency, true}, {read_concurrency, true}]),
     {ok, #state{}}.
 
 %% --------------------------------------------------------------------
@@ -75,7 +75,7 @@ handle_call({SessionId, getEndpoint}, _From, _State) ->
     Reply = Session#session.endpoint,
     {reply, Reply, _State};
 handle_call({lookup, SessionId}, _From, _State) ->
-	Reply = case ets:lookup(?NickMap, SessionId) of
+	Reply = case ets:lookup(?SESSION_TAB, SessionId) of
 		[] -> false;
 		[_] -> true
 	end,
@@ -92,7 +92,7 @@ handle_call(Msg, _From, _State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_cast({register, SessionId}, State) ->
-	ets:insert(?NickMap, {SessionId, #session{}}),
+	ets:insert(?SESSION_TAB, {SessionId, #session{}}),
     {noreply, State};
 handle_cast({unregister, SessionId}, State) ->
 	Session = get_session(SessionId),
@@ -100,7 +100,7 @@ handle_cast({unregister, SessionId}, State) ->
 		undefined -> ok;
 		_ -> timer:cancel(Session#session.timeRef)
 	end,
-	ets:delete(?NickMap, SessionId),
+	ets:delete(?SESSION_TAB, SessionId),
     {noreply, State};
 handle_cast({SessionId, From, subscribe, Transport}, _State) ->
 	Session = get_session(SessionId),
@@ -122,7 +122,7 @@ handle_cast({SessionId, From, subscribe, Transport}, _State) ->
 			NewMessages = T,
 			NewSubscribed = true
 	end,
-	ets:insert(?NickMap, {SessionId, Session#session{subscribed = NewSubscribed, messages = NewMessages, defined = NewDefined, transport = Transport}}),
+	ets:insert(?SESSION_TAB, {SessionId, Session#session{subscribed = NewSubscribed, messages = NewMessages, defined = NewDefined, transport = Transport}}),
     {noreply, _State};
 handle_cast({SessionId, timeout, NewTimeRef}, _State) ->
 	Session = get_session(SessionId),
@@ -130,15 +130,15 @@ handle_cast({SessionId, timeout, NewTimeRef}, _State) ->
 		undefined -> ok;
 		_ -> timer:cancel(Session#session.timeRef)
 	end,
-	ets:insert(?NickMap, {SessionId, Session#session{timeRef = NewTimeRef}}),
+	ets:insert(?SESSION_TAB, {SessionId, Session#session{timeRef = NewTimeRef}}),
     {noreply, _State};
 handle_cast({SessionId, end_connect}, _State) ->
 	Session = get_session(SessionId),	
-	ets:insert(?NickMap, {SessionId, Session#session{defined = undefined}}),
+	ets:insert(?SESSION_TAB, {SessionId, Session#session{defined = undefined}}),
     {noreply, _State};
 handle_cast({SessionId, endpoint, NewEndpoint}, _State) ->
 	Session = get_session(SessionId),	
-	ets:insert(?NickMap, {SessionId, Session#session{endpoint = NewEndpoint}}),	
+	ets:insert(?SESSION_TAB, {SessionId, Session#session{endpoint = NewEndpoint}}),	
     {noreply, _State};
 %% handle_cast({SessionId, From, getEndpoint}, _State) ->
 %% 	Session = get_session(SessionId),
@@ -147,7 +147,7 @@ handle_cast({SessionId, endpoint, NewEndpoint}, _State) ->
 handle_cast({SessionId, From, post, Message}, _State) ->
 	Session = get_session(SessionId),
 	{NewMessages, NewDefined} = handle_post_msg({From, Message}, Session, Session#session.transport),
-	ets:insert(?NickMap, {SessionId, Session#session{messages = NewMessages, defined = NewDefined}}),
+	ets:insert(?SESSION_TAB, {SessionId, Session#session{messages = NewMessages, defined = NewDefined}}),
     {noreply, _State};
 handle_cast(Msg, _State) ->
     {noreply, _State}.
@@ -185,7 +185,7 @@ handle_post_msg({_, Message}, Session, _) ->
 	{NewMessages, NewDefined}.
 
 get_session(SessionId) ->
-	Result = ets:lookup(?NickMap, SessionId),
+	Result = ets:lookup(?SESSION_TAB, SessionId),
 	case Result of
 		[{Key, Reply}] ->
 			Reply;

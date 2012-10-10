@@ -70,6 +70,7 @@ init([]) ->
 
 handle_call({register, Endpoint, Implement}, From, State) ->
 	Reply = ets:insert(State#state.endpoint, {Endpoint, Implement}),
+	Implement:on_init(Endpoint),
     {reply, Reply, State};
 
 handle_call({lookup, Endpoint}, From, State) ->

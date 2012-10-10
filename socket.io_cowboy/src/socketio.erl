@@ -46,13 +46,6 @@ start(_Type, _Args) ->
 		cowboy_http_protocol, [{dispatch, Dispatch}]
 	),
 	
-	cowboy:start_listener(my_https_listener, 1000,
-		cowboy_ssl_transport, [
-			{port, 8443}, {certfile, "priv/ssl/cert.pem"},
-			{keyfile, "priv/ssl/key.pem"}, {password, "cowboy"}],
-		cowboy_http_protocol, [{dispatch, Dispatch}]
-	),
-	
 	uuid_server:start(),
 	endpoint_server:start(),
 	session_server:start(),
@@ -73,9 +66,7 @@ start(_Type, _Args) ->
 	
 	%% add your implemention here ...
 	%% register the demo implemention
-	ImplName = "/chat",
-	endpoint_server:register(ImplName, chat_impl),
-	chat_impl:on_init(ImplName),
+	endpoint_server:register("/chat", chat_impl),
 
 	socketio_sup:start_link().
 
