@@ -4,4 +4,4 @@ external_includes=
 external_modules=
 nukeOutputOnClean=false
 output_dir=ebin
-source_dirs=test;deps/cowboy/src;src
+source_dirs=deps/lager/src;test;deps/cowboy/src;src
