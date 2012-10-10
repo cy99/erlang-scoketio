@@ -5,7 +5,8 @@
 init({_Transport, http}, Req, _State) ->
 	?BASE_MODULE:init({_Transport, http}, Req, _State).
 
-%% POST/Short Request
+%% @doc just handle post Request
+-spec handle(Req, _SessionId) -> {ok, Req, undefined_state}.
 handle(Req, SessionId) ->
 	%% TODO IE8下面发送的Unicode字符有待处理
 	Binary = list_to_binary(get_post_value(<<"d">>, Req)),
@@ -16,7 +17,8 @@ handle(Req, SessionId) ->
 	{_, Req2} = cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain; charset=utf-8">>}], list_to_binary(Result), Req),
 	{ok, Req2, undefined_state}.
 
-%% LONG POLLING
+%% @doc receive messages from session_server
+-spec info(_, Req, _) -> {ok, Req, undefined_state}.
 info({reply, first}, Req, State) ->
     output("1::", Req, State);
 info(timeout, Req, State) ->

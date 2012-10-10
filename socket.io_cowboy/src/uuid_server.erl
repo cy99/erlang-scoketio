@@ -19,13 +19,13 @@
 %% ====================================================================
 %% External functions
 %% ====================================================================
-%% @spec start() -> void
 %% @doc start the uuid server
+-spec start() -> void.
 start() ->
 	gen_server:start({local, ?MODULE}, ?MODULE, [], []).
 
-%% @spec gen() -> UUID
-%% @doc generate one uuid
+%% @doc generate string uuid
+-spec gen() -> string().
 gen() ->
 	gen_server:call(?MODULE, {gen}).
 %% ====================================================================

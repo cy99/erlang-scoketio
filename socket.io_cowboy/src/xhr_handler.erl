@@ -4,6 +4,8 @@
 -define(HEARBEAT_INTERVAL, socketio:get_env(heartbeat_interval)*1000).
 -define(HEARBEAT_TIMEOUT, socketio:get_env(heartbeat_timeout)*1000).
 
+-spec init({_Transport, http}, Req, _State) ->
+		  {ok, Req, string()} | {loop, Req, tuple(), integer(), hibernate}.
 init({_Transport, http}, Req, _State) ->
 	{Method, Req1} = cowboy_http_req:method(Req),
 	{[_, _, _, BinarySessionId], Req2} = cowboy_http_req:path(Req1),
@@ -18,7 +20,8 @@ init({_Transport, http}, Req, _State) ->
 			{loop, Req2, {SessionId, TimeoutRef}, ?HEARBEAT_INTERVAL + 1000, hibernate}
 	end.
 
-%% POST/Short Request
+%% @doc just handle post Request
+-spec handle(Req, _SessionId) -> {ok, Req, undefined_state}.
 handle(Req, SessionId) ->
 	Result = case cowboy_http_req:body(Req) of
 		{ok, Data, Req2} ->
@@ -29,9 +32,10 @@ handle(Req, SessionId) ->
 			"1"
 	end,
 	{_, Req3} = cowboy_http_req:reply(200, [{<<"Content-Type">>, <<"text/plain; charset=utf-8">>}], list_to_binary(Result), Req2),
-	{ok, Req3, SessionId}.
+	{ok, Req3, undefined_state}.
 
-%% LONG POLLING
+%% @doc receive messages from session_server
+-spec info(_, Req, _) -> {ok, Req, undefined_state}.
 info({reply, first}, Req, State) ->
     output("1::", Req, State);
 info(timeout, Req, State) ->

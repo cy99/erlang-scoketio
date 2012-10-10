@@ -11,8 +11,8 @@
 %% API Functions
 %%
 
-%% @spec do_post_msg({SessionId,Msg}) -> Msg
-%% @doc just export for htmlfile/jsonp module to call
+%% @doc handle message come from clinet
+-spec do_post_msg({_SessionId, _Msg}) -> string().
 do_post_msg({SessionId, Msg}) ->
 	{[Type, MessageId, Endpoint, SubMsgData]} = socketio_decode:decode(Msg),
 	case session_server:check(SessionId) of
@@ -23,8 +23,8 @@ do_post_msg({SessionId, Msg}) ->
 			"1"
 	end.
 
-%% @spec timeout_call(Any) -> void
 %% @doc timeout call
+-spec timeout_call(_Any) -> void.
 timeout_call({SessionId}) ->
 	session_server:unregister(SessionId);
 timeout_call({SessionId, Endpoint, Type}) ->
@@ -34,13 +34,13 @@ timeout_call({SessionId, Endpoint, Type}) ->
 	end),
 	session_server:unregister(SessionId).
 
-%% @spec set_timeout(SessionId) -> void
 %% @doc set timer execute one time with default ?HEARBEAT_TIMEOUT
+-spec set_timeout(_SessionId) -> void.
 set_timeout(SessionId) ->
 	set_timeout(SessionId, ?HEARBEAT_TIMEOUT).
 
-%% @spec set_timeout(SessionId, Timeout) -> void
 %% @doc set timer execute one time
+-spec set_timeout(_SessionId, _Timeout) -> void.
 set_timeout(SessionId, Timeout) ->
 	Endpoint = session_server:call({SessionId, getEndpoint}),
 	Args = case Endpoint of
