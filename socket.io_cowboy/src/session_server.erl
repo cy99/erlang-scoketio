@@ -140,35 +140,31 @@ handle_cast({SessionId, endpoint, NewEndpoint}, _State) ->
 	Session = get_session(SessionId),	
 	ets:insert(?SESSION_TAB, {SessionId, Session#session{endpoint = NewEndpoint}}),	
     {noreply, _State};
-%% handle_cast({SessionId, From, getEndpoint}, _State) ->
-%% 	Session = get_session(SessionId),
-%% 	From ! {endpoint, Session#session.endpoint},
-%%     {noreply, _State};
 handle_cast({SessionId, From, post, Message}, _State) ->
 	Session = get_session(SessionId),
 	{NewMessages, NewDefined} = handle_post_msg({From, Message}, Session, Session#session.transport),
 	ets:insert(?SESSION_TAB, {SessionId, Session#session{messages = NewMessages, defined = NewDefined}}),
     {noreply, _State};
-handle_cast(Msg, _State) ->
+handle_cast(_Msg, _State) ->
     {noreply, _State}.
 
+handle_post_msg({Any, Message}, Session, htmlfile) ->
+	handle_post_msg({Any, Message}, Session, websocket);
 handle_post_msg({_, Message}, Session, websocket) ->
 	NewMessages = case Session#session.defined of
 		undefined ->
 			lager:debug("undefined~n", []),
 			lists:merge(Session#session.messages, [Message]);
-		Pid ->
-			Pid ! {reply, Message},
-			Session#session.messages
-	end,
-	{NewMessages, Session#session.defined};
-handle_post_msg({_, Message}, Session, htmlfile) ->
-	NewMessages = case Session#session.defined of
-		undefined ->
-			lists:merge(Session#session.messages, [Message]);
-		Pid ->
-			Pid ! {reply, Message},
-			Session#session.messages
+		Pid -> %% check messages if empty
+			case Session#session.messages of 
+				[] ->
+					Pid ! {reply, Message};
+				_ ->
+					lager:debug("handle exist messages first"),
+					TargetMessages = lists:merge(Session#session.messages, [Message]),
+					lists:foreach(fun(Msg) -> Pid ! {reply, Msg} end, TargetMessages)
+			end,
+			[]
 	end,
 	{NewMessages, Session#session.defined};
 
@@ -217,8 +213,3 @@ terminate(Reason, State) ->
 %% --------------------------------------------------------------------
 code_change(OldVsn, State, Extra) ->
     {ok, State}.
-
-%% --------------------------------------------------------------------
-%%% Internal functions
-%% --------------------------------------------------------------------
-
