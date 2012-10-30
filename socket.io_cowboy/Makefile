@@ -1,15 +1,17 @@
-# Feel free to use, reuse and abuse the code in this file.
+PREFIX:=../
+DEST:=$(PREFIX)$(PROJECT)
 
-all: app
+REBAR=./rebar
 
-app: get-deps
-	@./rebar compile
+all:
+	@$(REBAR) get-deps compile
 
-get-deps:
-	@./rebar get-deps
-
+edoc:
+	@$(REBAR) doc
+	
 clean:
-	@./rebar clean
+	@$(REBAR) clean
 	rm -f erl_crash.dump
 
-dist-clean: clean
+app:
+	@$(REBAR) create template=demoapp dest=$(DEST) appid=$(PROJECT)
