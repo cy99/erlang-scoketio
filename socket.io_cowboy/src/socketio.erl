@@ -67,10 +67,6 @@ start(_Type, _Args) ->
             )
 	end,
 	
-	%% add your implemention here ...
-	%% register the demo implemention
-	%% endpoint_server:register("/chat", chat_impl),
-
 	socketio_sup:start_link().
 
 stop(_State) ->
