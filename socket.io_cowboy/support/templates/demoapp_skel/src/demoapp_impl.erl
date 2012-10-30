@@ -43,7 +43,7 @@ on_message({SessionId, Type, MessageId, Endpoint, Message}, SendFn) ->
 handle_event_name(<<"nickname">>, Json, {SessionId, Type, _Endpoint, _Message, SendFn}) ->
 	[NicknameBinary] = proplists:get_value(<<"args">>, Json),
 	NickNameStr = lists:flatten(binary_to_list(NicknameBinary)),
-	ets:insert(chat_tab, {SessionId, NickNameStr}),
+	ets:insert(?NickMap, {SessionId, NickNameStr}),
 	Welcome = lists:flatten(io_lib:format("{\"name\":\"~s\",\"args\":[\"~s\"]}", ["announcement", NickNameStr ++ " connected"])),
 	SessionIds = get_sessions(),
 	SendFn(Welcome, {SessionIds, Type}),
