@@ -30,21 +30,22 @@ start(_Type, _Args) ->
                         {<<".swf">>, [<<"application/x-shockwave-flash">>]}
                     ]}
              ]},
-			{['...'], cowboy_http_static, [
-                    {directory, {priv_dir, ?MODULE, [<<"www">>]}},
-                    {mimetypes, [
-                        {<<".htm">>, [<<"text/html">>]},
-                        {<<".html">>, [<<"text/html">>]},
-                        {<<".css">>, [<<"text/css">>]},
-                        {<<".js">>, [<<"application/x-javascript">>]},
-                        {<<".jpeg">>, [<<"image/jpeg">>]},
-                        {<<".jpg">>, [<<"image/jpeg">>]},
-                        {<<".ico">>, [<<"image/x-icon">>]},
-                        {<<".gif">>, [<<"image/gif">>]},
-                        {<<".png">>, [<<"image/png">>]},
-                        {<<".swf">>, [<<"application/x-shockwave-flash">>]}
-                    ]}
-             ]}
+			{['...'], cowboy_static_handler, [{path, <<"priv/www">>}]}
+%% 			{['...'], cowboy_http_static, [
+%%                     {directory, {priv_dir, ?MODULE, [<<"www">>]}},
+%%                     {mimetypes, [
+%%                         {<<".htm">>, [<<"text/html">>]},
+%%                         {<<".html">>, [<<"text/html">>]},
+%%                         {<<".css">>, [<<"text/css">>]},
+%%                         {<<".js">>, [<<"application/x-javascript">>]},
+%%                         {<<".jpeg">>, [<<"image/jpeg">>]},
+%%                         {<<".jpg">>, [<<"image/jpeg">>]},
+%%                         {<<".ico">>, [<<"image/x-icon">>]},
+%%                         {<<".gif">>, [<<"image/gif">>]},
+%%                         {<<".png">>, [<<"image/png">>]},
+%%                         {<<".swf">>, [<<"application/x-shockwave-flash">>]}
+%%                     ]}
+%%              ]}
 		]}
 	],
 	cowboy:start_listener(my_http_listener, get_env(netpool_acceptors),
