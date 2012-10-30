@@ -23,7 +23,7 @@ start(_Type, _Args) ->
 			{[<<"socket.io">>, <<"1">>, <<"jsonp-polling">>, '...'], jsonp_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"xhr-polling">>, '...'], xhr_handler, []},
 			%% just server socket.io's static files, eg: socket.io.js, WebSocketMain.swf, WebSocketMainInsecure.swf
-			{[<<"socket.io">>, <<"static">>, '...'], cowboy_static_handler, [{path, <<"priv/www">>}]},
+			{[<<"socket.io">>, <<"static">>, '...'], cowboy_static_handler, [{path, <<"priv/static">>}, {delpaths, [<<"socket.io">>, <<"static">>]}]},
 			{['...'], cowboy_static_handler, [{path, <<"priv/www">>}]}
 		]}
 	],

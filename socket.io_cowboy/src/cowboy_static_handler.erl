@@ -10,7 +10,7 @@
 -export([init/3, handle/2, terminate/2]).
 
 -record(state, {path=undefined, method=undefined, exists=undefined,
-        filepath=undefined}).
+        filepath=undefined, delpaths=undefined}).
 
 
 %% ----------------------------------------------------------------------------
@@ -20,7 +20,12 @@
 init({_Transport, http}, Req, Opts) ->
     case lists:keyfind(path, 1, Opts) of
         {path, Path} ->
-            {ok, Req, #state{path=Path}};
+			case lists:keyfind(delpaths, 1, Opts) of
+				false ->
+					{ok, Req, #state{path=Path}};
+				{delpaths, DelPaths} ->
+					{ok, Req, #state{path=Path, delpaths=DelPaths}}
+			end;
         false ->
             {error, "No Path Given"}
     end.
@@ -64,7 +69,14 @@ method_allowed(Req, State) ->
 
 resource_exists(Req, State) ->
     {PathTokens, Req2} = cowboy_http_req:path_info(Req),
-    FilePath = filename_join([State#state.path | PathTokens]),
+    FilePath = 
+		case State#state.delpaths of
+			undefined ->
+				filename_join([State#state.path | PathTokens]);
+			DelPaths ->
+				NewPathToken = lists:subtract(PathTokens, DelPaths),
+				filename_join([State#state.path | NewPathToken])	
+		end,
     case filelib:is_regular(FilePath) of
         true ->
             valid_request(Req2, State#state{exists=true, filepath=FilePath});
