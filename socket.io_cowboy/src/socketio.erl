@@ -69,7 +69,7 @@ start(_Type, _Args) ->
 	
 	%% add your implemention here ...
 	%% register the demo implemention
-	endpoint_server:register("/chat", chat_impl),
+	%% endpoint_server:register("/chat", chat_impl),
 
 	socketio_sup:start_link().
 
