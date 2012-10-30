@@ -23,29 +23,8 @@ start(_Type, _Args) ->
 			{[<<"socket.io">>, <<"1">>, <<"jsonp-polling">>, '...'], jsonp_handler, []},
 			{[<<"socket.io">>, <<"1">>, <<"xhr-polling">>, '...'], xhr_handler, []},
 			%% just server socket.io's static files, eg: socket.io.js, WebSocketMain.swf, WebSocketMainInsecure.swf
-			{[<<"socket.io">>, <<"static">>, '...'], cowboy_http_static, [
-                    {directory, {priv_dir, ?MODULE, [<<"static">>]}},
-                    {mimetypes, [
-                        {<<".js">>, [<<"application/x-javascript">>]},
-                        {<<".swf">>, [<<"application/x-shockwave-flash">>]}
-                    ]}
-             ]},
+			{[<<"socket.io">>, <<"static">>, '...'], cowboy_static_handler, [{path, <<"priv/www">>}]},
 			{['...'], cowboy_static_handler, [{path, <<"priv/www">>}]}
-%% 			{['...'], cowboy_http_static, [
-%%                     {directory, {priv_dir, ?MODULE, [<<"www">>]}},
-%%                     {mimetypes, [
-%%                         {<<".htm">>, [<<"text/html">>]},
-%%                         {<<".html">>, [<<"text/html">>]},
-%%                         {<<".css">>, [<<"text/css">>]},
-%%                         {<<".js">>, [<<"application/x-javascript">>]},
-%%                         {<<".jpeg">>, [<<"image/jpeg">>]},
-%%                         {<<".jpg">>, [<<"image/jpeg">>]},
-%%                         {<<".ico">>, [<<"image/x-icon">>]},
-%%                         {<<".gif">>, [<<"image/gif">>]},
-%%                         {<<".png">>, [<<"image/png">>]},
-%%                         {<<".swf">>, [<<"application/x-shockwave-flash">>]}
-%%                     ]}
-%%              ]}
 		]}
 	],
 	cowboy:start_listener(my_http_listener, get_env(netpool_acceptors),
